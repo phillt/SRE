@@ -3,7 +3,8 @@ import { Span } from '../../core/contracts/span.js'
 import { NodeMap, SectionNode } from '../../core/contracts/node-map.js'
 import { BuildReport } from '../../core/contracts/report.js'
 import { LoadedArtifacts } from '../loader/load-artifacts.js'
-import { LexicalIndex } from '../search/lexical-index.js'
+import { LexicalIndex, tokenize } from '../search/lexical-index.js'
+import { TFIDFRanker } from '../search/rank-tfidf.js'
 
 /**
  * Options for the neighbors() method
@@ -18,6 +19,7 @@ export interface NeighborsOptions {
  */
 export interface SearchOptions {
   limit?: number
+  rank?: 'none' | 'tfidf'
 }
 
 /**
@@ -38,6 +40,7 @@ export class Reader {
   private readonly orderToId: Map<number, string>
   private readonly sectionIndex?: Map<string, string[]>
   private searchIndex?: LexicalIndex  // Lazy-initialized on first search
+  private tfidfRanker?: TFIDFRanker  // Lazy-initialized with search index
 
   /**
    * Construct a Reader from loaded artifacts.
@@ -222,29 +225,92 @@ export class Reader {
    * Multi-word queries use AND logic (all terms must match).
    *
    * The search index is built lazily on first search() call.
-   * Results are returned in document order (by meta.order).
+   *
+   * Results can be optionally ranked by TF-IDF relevance.
+   * Without ranking, results are returned in document order (by meta.order).
+   * With ranking, results are sorted by relevance score (descending), with ties broken by document order.
    *
    * @param query - Search query (one or more words)
-   * @param options - Search options (limit)
-   * @returns Array of matching spans in document order
+   * @param options - Search options (limit, rank)
+   * @returns Array of matching spans
    */
   search(query: string, options?: SearchOptions): Span[] {
-    // Build index lazily on first call
+    // Build indexes lazily on first call
     if (!this.searchIndex) {
       this.searchIndex = new LexicalIndex(this.orderedSpans)
     }
 
+    // Build ranker lazily if ranking is requested
+    if (options?.rank === 'tfidf' && !this.tfidfRanker) {
+      this.tfidfRanker = new TFIDFRanker(this.searchIndex, this.orderedSpans)
+    }
+
+    // Don't apply limit at search stage if ranking - need all results to rank properly
+    const limitAtSearch = options?.rank === 'tfidf' ? undefined : options?.limit
+
     // Get matching span IDs
-    const matchingIds = this.searchIndex.search(query, options?.limit)
+    const matchingIds = this.searchIndex.search(query, limitAtSearch)
 
     // Convert to spans and filter out any undefined
-    const spans = matchingIds
+    let spans = matchingIds
       .map(id => this.spansById.get(id))
       .filter((span): span is Span => span !== undefined)
 
-    // Sort by document order to ensure deterministic results
-    spans.sort((a, b) => a.meta.order - b.meta.order)
+    // Apply ranking if requested
+    if (options?.rank === 'tfidf' && this.tfidfRanker) {
+      const queryTokens = tokenize(query)
+      const scored = this.tfidfRanker.rank(matchingIds, queryTokens)
+
+      // Sort by score descending, then by document order for ties
+      scored.sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score
+        }
+        // Tie-breaker: document order
+        const spanA = this.spansById.get(a.id)
+        const spanB = this.spansById.get(b.id)
+        if (!spanA || !spanB) return 0
+        return spanA.meta.order - spanB.meta.order
+      })
+
+      // Convert back to spans (preserving ranked order)
+      spans = scored
+        .map(({ id }) => this.spansById.get(id))
+        .filter((span): span is Span => span !== undefined)
+
+      // Apply limit after ranking
+      if (options?.limit !== undefined) {
+        spans = spans.slice(0, options.limit)
+      }
+    } else {
+      // No ranking - sort by document order
+      spans.sort((a, b) => a.meta.order - b.meta.order)
+    }
 
     return spans
+  }
+
+  /**
+   * Enable optional TF caching for TF-IDF ranking.
+   *
+   * Trades memory for speed by caching computed TF vectors.
+   * Useful when repeatedly searching/ranking a corpus with overlapping result sets.
+   *
+   * Must be called before search() calls that use ranking.
+   * If search index/ranker don't exist yet, they will be built.
+   *
+   * @param cacheSize - Maximum number of TF vectors to cache (default: 100)
+   */
+  enableTfCache(cacheSize: number = 100): void {
+    // Build indexes lazily if not already built
+    if (!this.searchIndex) {
+      this.searchIndex = new LexicalIndex(this.orderedSpans)
+    }
+    if (!this.tfidfRanker) {
+      this.tfidfRanker = new TFIDFRanker(this.searchIndex, this.orderedSpans)
+    }
+
+    // Enable cache on ranker
+    this.tfidfRanker.enableCache(cacheSize)
   }
 }
