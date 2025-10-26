@@ -126,6 +126,8 @@ export function generateReport(spans: Span[], manifest: Manifest): BuildReport {
     sourceHash: manifest.sourceHash,
     createdAt: manifest.createdAt,
     version: manifest.version,
+    format: manifest.format,
+    detection: manifest.detection,
   }
 
   return {
