@@ -8,6 +8,8 @@ export const SummarySchema = z.object({
   totalChars: z.number().int().nonnegative(),
   avgCharsPerSpan: z.number().nonnegative(),
   multiLineSpans: z.number().int().nonnegative(),
+  chapterCount: z.number().int().nonnegative(),
+  sectionCount: z.number().int().nonnegative(),
 })
 
 export type Summary = z.infer<typeof SummarySchema>

@@ -9,6 +9,7 @@ export const SpanSchema = z.object({
   text: z.string().min(1),
   meta: z.object({
     order: z.number().int().min(0),
+    headingPath: z.array(z.string()),
   }),
 })
 
