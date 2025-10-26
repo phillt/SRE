@@ -12,8 +12,9 @@ program
   .version('1.0.0')
   .argument('<input>', 'Input file')
   .option('-o, --output <dir>', 'Output directory', 'dist')
+  .option('-t, --title <title>', 'Document title (defaults to filename)')
   .option('-v, --verbose', 'Verbose output')
-  .action(async (input: string, options: { output: string; verbose: boolean }) => {
+  .action(async (input: string, options: { output: string; title?: string; verbose: boolean }) => {
     try {
       // Check if input file exists
       const fileExists = await fs.pathExists(input)
@@ -29,10 +30,14 @@ program
       // Run the spanize pipeline
       const result = await spanize(input, options.output, {
         verbose: options.verbose,
+        title: options.title,
       })
 
       // Print summary
       console.log(`Processed ${result.spans.length} span(s) → ${result.outputPath}`)
+      if (result.manifestPath && options.verbose) {
+        console.log(`Manifest written → ${result.manifestPath}`)
+      }
 
       process.exit(0)
     } catch (error) {
