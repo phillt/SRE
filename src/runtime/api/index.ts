@@ -15,6 +15,6 @@ export async function createReader(outputDir: string): Promise<Reader> {
 
 // Re-export types and classes
 export { Reader } from './Reader.js'
-export type { NeighborsOptions } from './Reader.js'
+export type { NeighborsOptions, SearchOptions } from './Reader.js'
 export { loadArtifacts } from '../loader/load-artifacts.js'
 export type { LoadedArtifacts } from '../loader/load-artifacts.js'
