@@ -34,6 +34,9 @@ export const ManifestSchema = z.object({
   byteLength: z.number().int().nonnegative(),
   spanCount: z.number().int().nonnegative(),
   version: z.string(),
+  format: z.string(),
+  detection: z.enum(['auto', 'flag']),
+  reader: z.string(),
   normalization: NormalizationSchema,
   schema: SchemaVersionsSchema,
 })

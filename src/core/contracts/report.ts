@@ -75,6 +75,8 @@ export const ProvenanceSchema = z.object({
   sourceHash: z.string(),
   createdAt: z.string().datetime(),
   version: z.string(),
+  format: z.string(),
+  detection: z.enum(['auto', 'flag']),
 })
 
 export type Provenance = z.infer<typeof ProvenanceSchema>
