@@ -4,20 +4,20 @@
  * Example CLI query tool built on Reader API
  *
  * Usage:
- *   node example-query-cli.js <output-dir> info
- *   node example-query-cli.js <output-dir> span <id>
- *   node example-query-cli.js <output-dir> order <n>
- *   node example-query-cli.js <output-dir> context <id> [before] [after]
- *   node example-query-cli.js <output-dir> sections
- *   node example-query-cli.js <output-dir> section <id>
+ *   node example-cli.js <output-dir> info
+ *   node example-cli.js <output-dir> span <id>
+ *   node example-cli.js <output-dir> order <n>
+ *   node example-cli.js <output-dir> context <id> [before] [after]
+ *   node example-cli.js <output-dir> sections
+ *   node example-cli.js <output-dir> section <id>
  */
 
-import { createReader } from './dist/runtime/api/index.js'
+import { createReader } from '../../dist/runtime/api/index.js'
 
 const [, , outputDir, command, ...args] = process.argv
 
 if (!outputDir || !command) {
-  console.error('Usage: node example-query-cli.js <output-dir> <command> [args...]')
+  console.error('Usage: node example-cli.js <output-dir> <command> [args...]')
   console.error('\nCommands:')
   console.error('  info                       Show document info')
   console.error('  span <id>                  Get span by ID')

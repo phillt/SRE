@@ -14,7 +14,7 @@
  * 8. Error handling
  */
 
-import { createReader } from './dist/runtime/api/index.js'
+import { createReader } from '../../dist/runtime/api/index.js'
 import { existsSync, rmSync } from 'fs'
 
 let passed = 0

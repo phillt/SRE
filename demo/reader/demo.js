@@ -4,7 +4,7 @@
  * Demo script showing Reader API usage
  */
 
-import { createReader } from './dist/runtime/api/index.js'
+import { createReader } from '../../dist/runtime/api/index.js'
 
 async function demo() {
   console.log('📖 SRE Runtime Reader Demo\n')

@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "sre": "./dist/cli/index.js"
+    "sre": "./dist/cli/index.js",
+    "sre-search": "./bin/sre-search.js"
   },
   "scripts": {
     "build": "tsc",

@@ -4,7 +4,7 @@
  * Demo script showing lexical search functionality
  */
 
-import { createReader } from './dist/runtime/api/index.js'
+import { createReader } from '../../dist/runtime/api/index.js'
 
 async function demo() {
   console.log('🔍 SRE Lexical Search Demo\n')

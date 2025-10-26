@@ -12,7 +12,7 @@
  * 6. Cache can be enabled
  */
 
-import { createReader } from './dist/runtime/api/index.js'
+import { createReader } from '../../dist/runtime/api/index.js'
 
 let passed = 0
 let failed = 0

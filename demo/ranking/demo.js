@@ -4,7 +4,7 @@
  * Demo script showing TF-IDF relevance ranking functionality
  */
 
-import { createReader } from './dist/runtime/api/index.js'
+import { createReader } from '../../dist/runtime/api/index.js'
 
 async function demo() {
   console.log('🎯 SRE TF-IDF Ranking Demo\n')

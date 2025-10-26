@@ -4,28 +4,28 @@
  * Simple CLI search tool using SRE Reader
  *
  * Usage:
- *   node sre-search-cli.js <output-dir> <query> [--limit=N] [--rank=tfidf]
+ *   node sre-search.js <output-dir> <query> [--limit=N] [--rank=tfidf]
  *
  * Examples:
- *   node sre-search-cli.js dist/final-test "section"
- *   node sre-search-cli.js dist/final-test "section two"
- *   node sre-search-cli.js dist/final-test "error" --limit=5
- *   node sre-search-cli.js dist/final-test "section" --rank=tfidf
- *   node sre-search-cli.js dist/final-test "section" --rank=tfidf --limit=3
+ *   node sre-search.js dist/final-test "section"
+ *   node sre-search.js dist/final-test "section two"
+ *   node sre-search.js dist/final-test "error" --limit=5
+ *   node sre-search.js dist/final-test "section" --rank=tfidf
+ *   node sre-search.js dist/final-test "section" --rank=tfidf --limit=3
  */
 
-import { createReader } from './dist/runtime/api/index.js'
+import { createReader } from '../dist/runtime/api/index.js'
 
 const args = process.argv.slice(2)
 
 if (args.length < 2) {
-  console.error('Usage: sre-search-cli.js <output-dir> <query> [--limit=N] [--rank=tfidf]')
+  console.error('Usage: sre-search.js <output-dir> <query> [--limit=N] [--rank=tfidf]')
   console.error('\nExamples:')
-  console.error('  sre-search-cli.js dist/final-test "section"')
-  console.error('  sre-search-cli.js dist/final-test "section two"')
-  console.error('  sre-search-cli.js dist/final-test "error" --limit=5')
-  console.error('  sre-search-cli.js dist/final-test "section" --rank=tfidf')
-  console.error('  sre-search-cli.js dist/final-test "section" --rank=tfidf --limit=3')
+  console.error('  sre-search.js dist/final-test "section"')
+  console.error('  sre-search.js dist/final-test "section two"')
+  console.error('  sre-search.js dist/final-test "error" --limit=5')
+  console.error('  sre-search.js dist/final-test "section" --rank=tfidf')
+  console.error('  sre-search.js dist/final-test "section" --rank=tfidf --limit=3')
   process.exit(1)
 }
 
