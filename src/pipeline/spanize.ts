@@ -42,6 +42,7 @@ export async function spanize(
 ): Promise<SpanizeResult> {
   // Step 1: Detect format and get appropriate reader
   const format = detectFormat(inputPath, options.format)
+  const detection: 'auto' | 'flag' = options.format ? 'flag' : 'auto'
   const reader = getReaderFor(format)
 
   if (options.verbose) {
@@ -97,6 +98,9 @@ export async function spanize(
     byteLength,
     spanCount: spans.length,
     version,
+    format,
+    detection,
+    reader: reader.name,
     normalization: {
       unicode: 'NFC',
       eol: 'LF',
