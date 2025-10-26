@@ -1,23 +1,14 @@
-import { z } from 'zod'
-
-// Zod schema for a span
-export const SpanSchema = z.object({
-  id: z.string(),
-  text: z.string().min(1),
-  meta: z.object({
-    order: z.number().int().min(0),
-  }),
-})
-
-export type Span = z.infer<typeof SpanSchema>
+import { Span, SpanSchema } from '../contracts/span.js'
+import { generateSpanId } from '../ids/generate-span-id.js'
 
 /**
- * Split normalized text into paragraph spans
+ * Split normalized text into paragraph spans.
  * - Splits on two or more newlines (paragraph boundaries)
  * - Trims each paragraph and drops empties
- * - Assigns sequential IDs (span:000001, span:000002, ...)
- * - Adds order metadata
- * - Validates each span with zod
+ * - Assigns sequential IDs and order metadata
+ * - Validates each span with Zod
+ *
+ * This is a pure function with no side effects.
  */
 export function splitIntoParagraphs(normalizedText: string): Span[] {
   // Split on two or more newlines
@@ -36,14 +27,14 @@ export function splitIntoParagraphs(normalizedText: string): Span[] {
 
     // Create span with sequential ID
     const span: Span = {
-      id: `span:${String(order + 1).padStart(6, '0')}`,
+      id: generateSpanId(order),
       text: trimmed,
       meta: {
         order,
       },
     }
 
-    // Validate with zod
+    // Validate with Zod
     SpanSchema.parse(span)
 
     spans.push(span)
