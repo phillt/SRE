@@ -17,6 +17,7 @@ export type Normalization = z.infer<typeof NormalizationSchema>
 export const SchemaVersionsSchema = z.object({
   span: z.string(),
   manifest: z.string(),
+  nodeMap: z.string(),
 })
 
 export type SchemaVersions = z.infer<typeof SchemaVersionsSchema>
