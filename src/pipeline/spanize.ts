@@ -1,7 +1,12 @@
 import { readTextFile } from '../adapters/readers/text-reader.js'
 import { writeSpansJsonl } from '../adapters/writers/jsonl-writer.js'
+import { writeManifest } from '../adapters/writers/manifest-writer.js'
 import { splitIntoParagraphs } from '../core/segment/split-paragraphs.js'
+import { generateCorpusId } from '../core/ids/generate-corpus-id.js'
 import { Span } from '../core/contracts/span.js'
+import { Manifest } from '../core/contracts/manifest.js'
+import { extractTitle } from '../utils/extract-title.js'
+import { getVersion } from '../utils/read-version.js'
 
 /**
  * Result of the spanize pipeline
@@ -12,6 +17,7 @@ export interface SpanizeResult {
   sourceHash: string
   byteLength: number
   outputPath: string
+  manifestPath: string
 }
 
 /**
@@ -22,11 +28,12 @@ export interface SpanizeResult {
  * 1. Read and normalize text
  * 2. Split into paragraph spans
  * 3. Write spans to JSONL
+ * 4. Write manifest JSON
  */
 export async function spanize(
   inputPath: string,
   outputDir: string,
-  options: { verbose?: boolean } = {}
+  options: { verbose?: boolean; title?: string } = {}
 ): Promise<SpanizeResult> {
   if (options.verbose) {
     console.log('Reading and normalizing text...')
@@ -55,8 +62,43 @@ export async function spanize(
     console.log('Writing to JSONL...')
   }
 
-  // Step 3: Write to output
+  // Step 3: Write spans to JSONL
   const outputPath = await writeSpansJsonl(spans, outputDir)
+
+  if (options.verbose) {
+    console.log('Generating manifest...')
+  }
+
+  // Step 4: Generate and write manifest
+  const title = extractTitle(sourcePath, options.title)
+  const version = await getVersion()
+  const corpusId = generateCorpusId(sourceHash)
+
+  const manifest: Manifest = {
+    id: corpusId,
+    title,
+    createdAt: new Date().toISOString(),
+    sourcePath,
+    sourceHash,
+    byteLength,
+    spanCount: spans.length,
+    version,
+    normalization: {
+      unicode: 'NFC',
+      eol: 'LF',
+      blankLineCollapse: true,
+    },
+    schema: {
+      span: '1.0.0',
+      manifest: '1.0.0',
+    },
+  }
+
+  const manifestPath = await writeManifest(manifest, outputDir)
+
+  if (options.verbose) {
+    console.log(`Manifest written → ${manifestPath}`)
+  }
 
   return {
     spans,
@@ -64,5 +106,6 @@ export async function spanize(
     sourceHash,
     byteLength,
     outputPath,
+    manifestPath,
   }
 }
