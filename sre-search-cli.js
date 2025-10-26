@@ -4,12 +4,14 @@
  * Simple CLI search tool using SRE Reader
  *
  * Usage:
- *   node sre-search-cli.js <output-dir> <query> [--limit=N]
+ *   node sre-search-cli.js <output-dir> <query> [--limit=N] [--rank=tfidf]
  *
  * Examples:
  *   node sre-search-cli.js dist/final-test "section"
  *   node sre-search-cli.js dist/final-test "section two"
  *   node sre-search-cli.js dist/final-test "error" --limit=5
+ *   node sre-search-cli.js dist/final-test "section" --rank=tfidf
+ *   node sre-search-cli.js dist/final-test "section" --rank=tfidf --limit=3
  */
 
 import { createReader } from './dist/runtime/api/index.js'
@@ -17,11 +19,13 @@ import { createReader } from './dist/runtime/api/index.js'
 const args = process.argv.slice(2)
 
 if (args.length < 2) {
-  console.error('Usage: sre-search-cli.js <output-dir> <query> [--limit=N]')
+  console.error('Usage: sre-search-cli.js <output-dir> <query> [--limit=N] [--rank=tfidf]')
   console.error('\nExamples:')
   console.error('  sre-search-cli.js dist/final-test "section"')
   console.error('  sre-search-cli.js dist/final-test "section two"')
   console.error('  sre-search-cli.js dist/final-test "error" --limit=5')
+  console.error('  sre-search-cli.js dist/final-test "section" --rank=tfidf')
+  console.error('  sre-search-cli.js dist/final-test "section" --rank=tfidf --limit=3')
   process.exit(1)
 }
 
@@ -39,6 +43,17 @@ if (limitArg) {
   }
 }
 
+// Parse --rank flag
+let rank
+const rankArg = args.find(arg => arg.startsWith('--rank='))
+if (rankArg) {
+  rank = rankArg.split('=')[1]
+  if (rank !== 'tfidf' && rank !== 'none') {
+    console.error('Error: --rank must be "tfidf" or "none"')
+    process.exit(1)
+  }
+}
+
 async function main() {
   // Load reader
   console.error(`Loading corpus from ${outputDir}...`)
@@ -50,11 +65,16 @@ async function main() {
   if (limit) {
     console.error(`Limit: ${limit} results`)
   }
+  if (rank) {
+    console.error(`Ranking: ${rank}`)
+  }
   console.error()
 
   // Perform search
-  const options = limit ? { limit } : undefined
-  const results = reader.search(query, options)
+  const options = {}
+  if (limit) options.limit = limit
+  if (rank) options.rank = rank
+  const results = reader.search(query, Object.keys(options).length > 0 ? options : undefined)
 
   if (results.length === 0) {
     console.error('No results found.')
