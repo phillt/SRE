@@ -37,8 +37,9 @@ program
 
       // Print summary
       console.log(`Processed ${result.spans.length} span(s) → ${result.outputPath}`)
-      if (result.manifestPath && options.verbose) {
+      if (options.verbose) {
         console.log(`Manifest written → ${result.manifestPath}`)
+        console.log(`Node map written → ${result.nodeMapPath}`)
       }
 
       process.exit(0)
