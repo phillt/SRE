@@ -1,5 +1,6 @@
 import { Span } from '../contracts/span.js'
 import { Manifest } from '../contracts/manifest.js'
+import { NodeMap } from '../contracts/node-map.js'
 import {
   BuildReport,
   SpanRef,
@@ -33,14 +34,15 @@ function calculatePercentile(sortedValues: number[], percentile: number): number
 }
 
 /**
- * Generate a quality report from spans and manifest.
+ * Generate a quality report from spans, manifest, and node map.
  * Pure function with no side effects.
  *
  * @param spans - Array of span objects
  * @param manifest - Manifest metadata
+ * @param nodeMap - Hierarchical node map
  * @returns BuildReport with quality metrics
  */
-export function generateReport(spans: Span[], manifest: Manifest): BuildReport {
+export function generateReport(spans: Span[], manifest: Manifest, nodeMap: NodeMap): BuildReport {
   // Define thresholds
   const thresholds: Thresholds = {
     shortSpanChars: 20,
@@ -55,12 +57,18 @@ export function generateReport(spans: Span[], manifest: Manifest): BuildReport {
   // Count multi-line spans (spans with internal newlines)
   const multiLineSpans = spans.filter((span) => span.text.includes('\n')).length
 
+  // Count chapters and sections from node map
+  const chapterCount = Object.keys(nodeMap.chapters).length
+  const sectionCount = Object.keys(nodeMap.sections).length
+
   // Summary
   const summary: Summary = {
     spanCount: spans.length,
     totalChars,
     avgCharsPerSpan: Math.round(avgCharsPerSpan * 100) / 100, // round to 2 decimals
     multiLineSpans,
+    chapterCount,
+    sectionCount,
   }
 
   // Find min and max spans
