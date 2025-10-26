@@ -33,6 +33,7 @@ export function tokenize(text: string): string[] {
  */
 export class LexicalIndex {
   private readonly index: Map<string, Set<string>>
+  private readonly spans: Span[]
 
   /**
    * Build search index from spans.
@@ -40,6 +41,7 @@ export class LexicalIndex {
    * @param spans - Array of spans to index
    */
   constructor(spans: Span[]) {
+    this.spans = spans
     this.index = new Map()
 
     // Build inverted index
@@ -105,5 +107,29 @@ export class LexicalIndex {
       vocabularySize: this.index.size,
       totalTokenOccurrences: totalOccurrences,
     }
+  }
+
+  /**
+   * Get document frequency for a token.
+   *
+   * Document frequency is the number of spans containing the token.
+   * Used for computing IDF (Inverse Document Frequency) in ranking.
+   *
+   * @param token - Token to look up (should be pre-tokenized)
+   * @returns Number of documents (spans) containing the token
+   */
+  getDocumentFrequency(token: string): number {
+    return this.index.get(token)?.size ?? 0
+  }
+
+  /**
+   * Get total number of documents (spans) in the corpus.
+   *
+   * Used for computing IDF (Inverse Document Frequency) in ranking.
+   *
+   * @returns Total number of spans in the index
+   */
+  getTotalDocuments(): number {
+    return this.spans.length
   }
 }
