@@ -13,8 +13,9 @@ program
   .argument('<input>', 'Input file')
   .option('-o, --output <dir>', 'Output directory', 'dist')
   .option('-t, --title <title>', 'Document title (defaults to filename)')
+  .option('-f, --format <format>', 'Input format (auto-detected if not specified)')
   .option('-v, --verbose', 'Verbose output')
-  .action(async (input: string, options: { output: string; title?: string; verbose: boolean }) => {
+  .action(async (input: string, options: { output: string; title?: string; format?: string; verbose: boolean }) => {
     try {
       // Check if input file exists
       const fileExists = await fs.pathExists(input)
@@ -31,6 +32,7 @@ program
       const result = await spanize(input, options.output, {
         verbose: options.verbose,
         title: options.title,
+        format: options.format,
       })
 
       // Print summary
