@@ -3,6 +3,7 @@ import { Span } from '../../core/contracts/span.js'
 import { NodeMap, SectionNode } from '../../core/contracts/node-map.js'
 import { BuildReport } from '../../core/contracts/report.js'
 import { LoadedArtifacts } from '../loader/load-artifacts.js'
+import { LexicalIndex } from '../search/lexical-index.js'
 
 /**
  * Options for the neighbors() method
@@ -10,6 +11,13 @@ import { LoadedArtifacts } from '../loader/load-artifacts.js'
 export interface NeighborsOptions {
   before?: number
   after?: number
+}
+
+/**
+ * Options for the search() method
+ */
+export interface SearchOptions {
+  limit?: number
 }
 
 /**
@@ -29,6 +37,7 @@ export class Reader {
   private readonly orderedSpans: Span[]
   private readonly orderToId: Map<number, string>
   private readonly sectionIndex?: Map<string, string[]>
+  private searchIndex?: LexicalIndex  // Lazy-initialized on first search
 
   /**
    * Construct a Reader from loaded artifacts.
@@ -204,5 +213,38 @@ export class Reader {
    */
   getBuildReport(): BuildReport | undefined {
     return this.buildReport
+  }
+
+  /**
+   * Search for spans containing query terms.
+   *
+   * Uses exact token matching (case-insensitive, punctuation-stripped).
+   * Multi-word queries use AND logic (all terms must match).
+   *
+   * The search index is built lazily on first search() call.
+   * Results are returned in document order (by meta.order).
+   *
+   * @param query - Search query (one or more words)
+   * @param options - Search options (limit)
+   * @returns Array of matching spans in document order
+   */
+  search(query: string, options?: SearchOptions): Span[] {
+    // Build index lazily on first call
+    if (!this.searchIndex) {
+      this.searchIndex = new LexicalIndex(this.orderedSpans)
+    }
+
+    // Get matching span IDs
+    const matchingIds = this.searchIndex.search(query, options?.limit)
+
+    // Convert to spans and filter out any undefined
+    const spans = matchingIds
+      .map(id => this.spansById.get(id))
+      .filter((span): span is Span => span !== undefined)
+
+    // Sort by document order to ensure deterministic results
+    spans.sort((a, b) => a.meta.order - b.meta.order)
+
+    return spans
   }
 }
