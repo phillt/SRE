@@ -1,8 +1,10 @@
 import { readTextFile } from '../adapters/readers/text-reader.js'
 import { writeSpansJsonl } from '../adapters/writers/jsonl-writer.js'
 import { writeManifest } from '../adapters/writers/manifest-writer.js'
+import { writeReport } from '../adapters/writers/report-writer.js'
 import { splitIntoParagraphs } from '../core/segment/split-paragraphs.js'
 import { generateCorpusId } from '../core/ids/generate-corpus-id.js'
+import { generateReport } from '../core/validate/generate-report.js'
 import { Span } from '../core/contracts/span.js'
 import { Manifest } from '../core/contracts/manifest.js'
 import { extractTitle } from '../utils/extract-title.js'
@@ -18,6 +20,7 @@ export interface SpanizeResult {
   byteLength: number
   outputPath: string
   manifestPath: string
+  reportPath: string
 }
 
 /**
@@ -29,6 +32,7 @@ export interface SpanizeResult {
  * 2. Split into paragraph spans
  * 3. Write spans to JSONL
  * 4. Write manifest JSON
+ * 5. Generate and write build report
  */
 export async function spanize(
   inputPath: string,
@@ -98,6 +102,15 @@ export async function spanize(
 
   if (options.verbose) {
     console.log(`Manifest written → ${manifestPath}`)
+    console.log('Generating build report...')
+  }
+
+  // Step 5: Generate and write build report
+  const report = generateReport(spans, manifest)
+  const reportPath = await writeReport(report, outputDir)
+
+  if (options.verbose) {
+    console.log(`Report written → ${reportPath}`)
   }
 
   return {
@@ -107,5 +120,6 @@ export async function spanize(
     byteLength,
     outputPath,
     manifestPath,
+    reportPath,
   }
 }
