@@ -1,0 +1,9 @@
+{"id":"span:000001","text":"# Sample Markdown Document","meta":{"order":0}}
+{"id":"span:000002","text":"This is the first paragraph with some **bold** and *italic* text.\nIt can span multiple lines within the same paragraph.","meta":{"order":1}}
+{"id":"span:000003","text":"## Section Two","meta":{"order":2}}
+{"id":"span:000004","text":"This is the second paragraph under section two.","meta":{"order":3}}
+{"id":"span:000005","text":"### Subsection","meta":{"order":4}}
+{"id":"span:000006","text":"Here's a nested section with a paragraph that includes `inline code` and [a link](https://example.com).","meta":{"order":5}}
+{"id":"span:000007","text":"## Section Three","meta":{"order":6}}
+{"id":"span:000008","text":"- This list\n- Will be treated\n- As a single paragraph","meta":{"order":7}}
+{"id":"span:000009","text":"Final paragraph in this document with some **emphasis** for testing.","meta":{"order":8}}

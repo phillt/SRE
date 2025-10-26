@@ -1,0 +1,42 @@
+{
+  "summary": {
+    "spanCount": 9,
+    "totalChars": 460,
+    "avgCharsPerSpan": 51.11,
+    "multiLineSpans": 2
+  },
+  "lengthStats": {
+    "min": {
+      "chars": 14,
+      "id": "span:000003",
+      "order": 2
+    },
+    "max": {
+      "chars": 119,
+      "id": "span:000002",
+      "order": 1
+    },
+    "p10": 14,
+    "p50": 47,
+    "p90": 119
+  },
+  "thresholds": {
+    "shortSpanChars": 20,
+    "longSpanChars": 2000
+  },
+  "warnings": {
+    "shortSpans": 3,
+    "longSpans": 0,
+    "duplicateTexts": 0
+  },
+  "samples": {
+    "shortest": "## Section Two",
+    "longest": "This is the first paragraph with some **bold** and *italic* text.\nIt can span multiple lines within the same paragraph."
+  },
+  "provenance": {
+    "id": "corpus:47cc5c6c54d3",
+    "sourceHash": "47cc5c6c54d395f213a471bace7c55a2f9ddf66af42225dcfa7ba98981917b6d",
+    "createdAt": "2025-10-26T18:39:24.051Z",
+    "version": "1.0.0"
+  }
+}

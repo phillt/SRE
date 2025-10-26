@@ -1,0 +1,19 @@
+{
+  "id": "corpus:47cc5c6c54d3",
+  "title": "sample",
+  "createdAt": "2025-10-26T18:39:24.051Z",
+  "sourcePath": "/home/philllt/Projects/apps/SRE/test-input/sample.md",
+  "sourceHash": "47cc5c6c54d395f213a471bace7c55a2f9ddf66af42225dcfa7ba98981917b6d",
+  "byteLength": 477,
+  "spanCount": 9,
+  "version": "1.0.0",
+  "normalization": {
+    "unicode": "NFC",
+    "eol": "LF",
+    "blankLineCollapse": true
+  },
+  "schema": {
+    "span": "1.0.0",
+    "manifest": "1.0.0"
+  }
+}
