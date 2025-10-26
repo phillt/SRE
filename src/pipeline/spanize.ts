@@ -1,4 +1,4 @@
-import { readAndNormalizeText } from '../adapters/readers/text-reader.js'
+import { readTextFile } from '../adapters/readers/text-reader.js'
 import { writeSpansJsonl } from '../adapters/writers/jsonl-writer.js'
 import { splitIntoParagraphs } from '../core/segment/split-paragraphs.js'
 import { Span } from '../core/contracts/span.js'
@@ -8,7 +8,9 @@ import { Span } from '../core/contracts/span.js'
  */
 export interface SpanizeResult {
   spans: Span[]
+  sourcePath: string
   sourceHash: string
+  byteLength: number
   outputPath: string
 }
 
@@ -31,11 +33,13 @@ export async function spanize(
   }
 
   // Step 1: Read and normalize
-  const { text, sourceHash } = await readAndNormalizeText(inputPath)
+  const { text, sourcePath, sourceHash, byteLength } = await readTextFile(inputPath)
 
   if (options.verbose) {
+    console.log(`Source path: ${sourcePath}`)
     console.log(`Source hash: ${sourceHash}`)
-    console.log(`Normalized text length: ${text.length}`)
+    console.log(`Original size: ${byteLength} bytes`)
+    console.log(`Normalized text length: ${text.length} characters`)
     console.log('Splitting into paragraphs...')
   }
 
@@ -56,7 +60,9 @@ export async function spanize(
 
   return {
     spans,
+    sourcePath,
     sourceHash,
+    byteLength,
     outputPath,
   }
 }
