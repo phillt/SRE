@@ -18,3 +18,5 @@ yarn-error.log*
 .idea/
 
 CLAUDE.md
+
+dist-windows/
