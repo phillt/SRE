@@ -2,9 +2,11 @@ import { getReaderFor, enrichReaderOutput, detectFormat } from '../adapters/read
 import { writeSpansJsonl } from '../adapters/writers/jsonl-writer.js'
 import { writeManifest } from '../adapters/writers/manifest-writer.js'
 import { writeReport } from '../adapters/writers/report-writer.js'
+import { writeNodeMap } from '../adapters/writers/node-map-writer.js'
 import { splitIntoParagraphs } from '../core/segment/split-paragraphs.js'
 import { generateCorpusId } from '../core/ids/generate-corpus-id.js'
 import { generateReport } from '../core/validate/generate-report.js'
+import { generateNodeMap } from '../core/structure/generate-node-map.js'
 import { Span } from '../core/contracts/span.js'
 import { Manifest } from '../core/contracts/manifest.js'
 import { extractTitle } from '../utils/extract-title.js'
@@ -21,6 +23,7 @@ export interface SpanizeResult {
   outputPath: string
   manifestPath: string
   reportPath: string
+  nodeMapPath: string
 }
 
 /**
@@ -30,10 +33,11 @@ export interface SpanizeResult {
  * Steps:
  * 1. Detect format and get appropriate reader
  * 2. Read and normalize text via reader + wrapper
- * 3. Split into paragraph spans
+ * 3. Split into paragraph spans (with heading paths for Markdown)
  * 4. Write spans to JSONL
  * 5. Generate and write manifest JSON
- * 6. Generate and write build report
+ * 6. Generate and write node map
+ * 7. Generate and write build report
  */
 export async function spanize(
   inputPath: string,
@@ -65,8 +69,8 @@ export async function spanize(
     console.log('Splitting into paragraphs...')
   }
 
-  // Step 3: Split into spans
-  const spans = splitIntoParagraphs(text)
+  // Step 3: Split into spans (pass format for heading detection)
+  const spans = splitIntoParagraphs(text, format)
 
   if (spans.length === 0) {
     throw new Error('No paragraphs found in input file')
@@ -109,6 +113,7 @@ export async function spanize(
     schema: {
       span: '1.0.0',
       manifest: '1.0.0',
+      nodeMap: '1.0.0',
     },
   }
 
@@ -116,11 +121,20 @@ export async function spanize(
 
   if (options.verbose) {
     console.log(`Manifest written → ${manifestPath}`)
+    console.log('Generating node map...')
+  }
+
+  // Step 6: Generate and write node map
+  const nodeMap = generateNodeMap(spans, manifest)
+  const nodeMapPath = await writeNodeMap(nodeMap, outputDir)
+
+  if (options.verbose) {
+    console.log(`Node map written → ${nodeMapPath}`)
     console.log('Generating build report...')
   }
 
-  // Step 6: Generate and write build report
-  const report = generateReport(spans, manifest)
+  // Step 7: Generate and write build report
+  const report = generateReport(spans, manifest, nodeMap)
   const reportPath = await writeReport(report, outputDir)
 
   if (options.verbose) {
@@ -135,5 +149,6 @@ export async function spanize(
     outputPath,
     manifestPath,
     reportPath,
+    nodeMapPath,
   }
 }
