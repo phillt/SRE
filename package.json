@@ -4,6 +4,9 @@
   "description": "",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "sre": "./dist/cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -12,8 +15,13 @@
     "format:check": "prettier --check \"src/**/*.ts\""
   },
   "devDependencies": {
+    "@types/node": "^24.9.1",
     "prettier": "^3.6.2",
     "typescript": "^5.5.3"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "commander": "^12.1.0",
+    "glob": "^10.3.12"
+  }
 }
