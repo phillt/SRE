@@ -1,4 +1,4 @@
-import { readTextFile } from '../adapters/readers/text-reader.js'
+import { getReaderFor, enrichReaderOutput, detectFormat } from '../adapters/readers/index.js'
 import { writeSpansJsonl } from '../adapters/writers/jsonl-writer.js'
 import { writeManifest } from '../adapters/writers/manifest-writer.js'
 import { writeReport } from '../adapters/writers/report-writer.js'
@@ -28,23 +28,33 @@ export interface SpanizeResult {
  * into structured paragraph spans.
  *
  * Steps:
- * 1. Read and normalize text
- * 2. Split into paragraph spans
- * 3. Write spans to JSONL
- * 4. Write manifest JSON
- * 5. Generate and write build report
+ * 1. Detect format and get appropriate reader
+ * 2. Read and normalize text via reader + wrapper
+ * 3. Split into paragraph spans
+ * 4. Write spans to JSONL
+ * 5. Generate and write manifest JSON
+ * 6. Generate and write build report
  */
 export async function spanize(
   inputPath: string,
   outputDir: string,
-  options: { verbose?: boolean; title?: string } = {}
+  options: { verbose?: boolean; title?: string; format?: string } = {}
 ): Promise<SpanizeResult> {
+  // Step 1: Detect format and get appropriate reader
+  const format = detectFormat(inputPath, options.format)
+  const reader = getReaderFor(format)
+
   if (options.verbose) {
+    console.log(`Format: ${format} (reader: ${reader.name})`)
     console.log('Reading and normalizing text...')
   }
 
-  // Step 1: Read and normalize
-  const { text, sourcePath, sourceHash, byteLength } = await readTextFile(inputPath)
+  // Step 2: Read file with metadata enrichment
+  const { text, sourcePath, sourceHash, byteLength } = await enrichReaderOutput(
+    reader,
+    inputPath,
+    format
+  )
 
   if (options.verbose) {
     console.log(`Source path: ${sourcePath}`)
@@ -54,7 +64,7 @@ export async function spanize(
     console.log('Splitting into paragraphs...')
   }
 
-  // Step 2: Split into spans
+  // Step 3: Split into spans
   const spans = splitIntoParagraphs(text)
 
   if (spans.length === 0) {
@@ -66,14 +76,14 @@ export async function spanize(
     console.log('Writing to JSONL...')
   }
 
-  // Step 3: Write spans to JSONL
+  // Step 4: Write spans to JSONL
   const outputPath = await writeSpansJsonl(spans, outputDir)
 
   if (options.verbose) {
     console.log('Generating manifest...')
   }
 
-  // Step 4: Generate and write manifest
+  // Step 5: Generate and write manifest
   const title = extractTitle(sourcePath, options.title)
   const version = await getVersion()
   const corpusId = generateCorpusId(sourceHash)
@@ -105,7 +115,7 @@ export async function spanize(
     console.log('Generating build report...')
   }
 
-  // Step 5: Generate and write build report
+  // Step 6: Generate and write build report
   const report = generateReport(spans, manifest)
   const reportPath = await writeReport(report, outputDir)
 
