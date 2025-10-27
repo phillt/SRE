@@ -434,11 +434,33 @@ Creating a new release is automated through GitHub Actions:
    git push origin master --tags
    ```
 
-3. **Automated workflow will:**
+3. **Automated workflows will:**
    - Build the project
    - Generate changelog from commits since last tag
    - Create a GitHub Release with release notes
-   - Attach build artifacts
+   - Automatically publish the package to npm
+
+### Setting Up npm Publishing (First Time Only)
+
+To enable automatic npm publishing, you need to configure an npm token:
+
+1. **Generate an npm token:**
+   - Log in to [npmjs.com](https://www.npmjs.com/)
+   - Go to Account Settings → Access Tokens
+   - Click "Generate New Token" → Choose "Automation" type
+   - Copy the generated token
+
+2. **Add token to GitHub:**
+   - Go to repository Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+   - Name: `NPM_TOKEN`
+   - Value: Paste your npm token
+   - Click "Add secret"
+
+3. **Verify setup:**
+   - Create a test release
+   - Check the "Publish to npm" workflow runs successfully
+   - Verify package appears on npmjs.com
 
 **Commit Message Conventions:**
 

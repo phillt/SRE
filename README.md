@@ -2,6 +2,8 @@
 
 > Transform documents into structured, queryable span artifacts with intelligent search and ranking
 
+[![npm version](https://img.shields.io/npm/v/static-research-engine.svg)](https://www.npmjs.com/package/static-research-engine)
+[![npm downloads](https://img.shields.io/npm/dm/static-research-engine.svg)](https://www.npmjs.com/package/static-research-engine)
 [![GitHub Release](https://img.shields.io/github/v/release/phillt/SRE)](https://github.com/phillt/SRE/releases)
 [![Build](https://github.com/phillt/SRE/actions/workflows/build.yml/badge.svg)](https://github.com/phillt/SRE/actions/workflows/build.yml)
 [![Format Check](https://github.com/phillt/SRE/actions/workflows/format.yml/badge.svg)](https://github.com/phillt/SRE/actions/workflows/format.yml)
