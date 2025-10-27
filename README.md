@@ -23,9 +23,22 @@ SRE is a modular TypeScript pipeline that transforms text-based documents into s
 
 ## Why SRE?
 
-**The Problem:** LLMs are great at reasoning but terrible at reading large documents efficiently. Traditional RAG (Retrieval-Augmented Generation) systems are dynamic, lossy, and require re-embedding or vector database access for every query.
+**The Problem:** LLMs are great at reasoning but terrible at reading large documents efficiently. Traditional RAG (Retrieval-Augmented Generation) systems are dynamic, probabilistic, and transient—each query reinterprets embeddings without persistent, deterministic understanding of the source text.
 
 **The Solution:** SRE compiles documents into **static, structured knowledge artifacts** — like a build system for language understanding. Build once, query forever.
+
+### How SRE Complements RAG
+
+**SRE does not replace RAG — it enhances it.** Each serves a different role:
+
+- **RAG** provides *immediate, dynamic context* using embeddings for fast recall
+- **SRE** provides *persistent, deterministic structure* with full provenance
+
+When combined:
+1. **RAG** finds relevant snippets (dynamic recall)
+2. **SRE** expands context by traversing structured corpus (deterministic discovery)
+
+**RAG tells the agent where to look. SRE gives it everything it needs once it's there.**
 
 ### Static vs Dynamic Retrieval
 
@@ -33,16 +46,16 @@ SRE is a modular TypeScript pipeline that transforms text-based documents into s
 |--------|----------------|-----|
 | **Data volatility** | Reinterprets embeddings per query | Fixed, compiled spans and indexes |
 | **Cost** | Requires vector DB access | One-time compile, static files |
-| **Determinism** | Varies with model embeddings | Bitwise reproducible builds |
+| **Determinism** | May vary by model or threshold | Bitwise reproducible builds |
 | **Hosting** | Needs live vector DB | Works from static JSON on any filesystem |
-| **Explainability** | Opaque vector matching | Full provenance with manifest + nodeMap |
+| **Explainability** | Depends on vector similarity | Full provenance with manifest + nodeMap |
 
 ### Who It's For
 
 ✅ **Engineers and researchers** who need:
 - Reproducible, explainable document retrieval for LLM pipelines
 - Offline corpus preparation for LLM reasoning, QA, or summarization
-- Static, local corpus foundation for RAG systems
+- Static, local corpus foundation to complement RAG systems
 - Provenance, structure, and deterministic builds
 
 ✅ **Use cases:**
@@ -51,7 +64,7 @@ SRE is a modular TypeScript pipeline that transforms text-based documents into s
 - Dataset preparation for fine-tuning or evaluation
 - Analytical indexing (law, science, policy, technical docs)
 
-> 📖 **Read more:** See [ABOUT.md](ABOUT.md) for the complete philosophy and design rationale.
+> 📖 **Read more:** See [ABOUT.md](ABOUT.md) for the complete philosophy, including detailed comparison with RAG and how they work together.
 
 ## Installation
 
