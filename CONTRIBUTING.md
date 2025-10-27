@@ -416,6 +416,40 @@ test('Feature works as expected', () => {
 - **demo/*/*.md** - Detailed implementation docs
 - **docs/*.md** - Technical implementation notes
 
+## Release Process
+
+### For Maintainers
+
+Creating a new release is automated through GitHub Actions:
+
+1. **Update version in package.json:**
+   ```bash
+   npm version patch  # For bug fixes (1.0.0 -> 1.0.1)
+   npm version minor  # For new features (1.0.0 -> 1.1.0)
+   npm version major  # For breaking changes (1.0.0 -> 2.0.0)
+   ```
+
+2. **Push the version tag:**
+   ```bash
+   git push origin master --tags
+   ```
+
+3. **Automated workflow will:**
+   - Build the project
+   - Generate changelog from commits since last tag
+   - Create a GitHub Release with release notes
+   - Attach build artifacts
+
+**Commit Message Conventions:**
+
+Use clear prefixes to help generate meaningful changelogs:
+- `Add:` - New features
+- `Fix:` - Bug fixes
+- `Update:` - Enhancements to existing features
+- `Refactor:` - Code improvements without behavior changes
+- `Docs:` - Documentation updates
+- `Test:` - Test additions or updates
+
 ## Community
 
 ### Getting Help

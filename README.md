@@ -2,6 +2,7 @@
 
 > Transform documents into structured, queryable span artifacts with intelligent search and ranking
 
+[![GitHub Release](https://img.shields.io/github/v/release/phillt/SRE)](https://github.com/phillt/SRE/releases)
 [![Build](https://github.com/phillt/SRE/actions/workflows/build.yml/badge.svg)](https://github.com/phillt/SRE/actions/workflows/build.yml)
 [![Format Check](https://github.com/phillt/SRE/actions/workflows/format.yml/badge.svg)](https://github.com/phillt/SRE/actions/workflows/format.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
