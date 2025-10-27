@@ -75,10 +75,10 @@ When combined:
 
 ```bash
 # Global installation
-npm install -g sre
+npm install -g static-research-engine
 
 # Project installation
-npm install sre
+npm install static-research-engine
 ```
 
 ### From source
@@ -132,7 +132,7 @@ sre-search output/ "section" --rank=tfidf --limit=5
 ### 3. Use the Reader API
 
 ```javascript
-import { createReader } from 'sre'
+import { createReader } from 'static-research-engine'
 
 // Load artifacts
 const reader = await createReader('output/')
@@ -209,7 +209,7 @@ Examples:
 The `Reader` class provides read-only access to artifacts:
 
 ```typescript
-import { createReader } from 'sre'
+import { createReader } from 'static-research-engine'
 
 const reader = await createReader('output-dir/')
 

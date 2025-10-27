@@ -54,7 +54,7 @@ jobs:
             ## Installation
 
             ```bash
-            npm install sre@${{ steps.get_version.outputs.VERSION }}
+            npm install static-research-engine@${{ steps.get_version.outputs.VERSION }}
             ```
 
             **Full Changelog**: https://github.com/phillt/SRE/compare/v${{ steps.get_version.outputs.VERSION }}...HEAD
