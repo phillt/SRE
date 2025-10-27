@@ -459,7 +459,7 @@ To enable automatic npm publishing, you need to configure an npm token:
 
 3. **Verify setup:**
    - Create a test release
-   - Check the "Publish to npm" workflow runs successfully
+   - Check the "Release" workflow completes successfully (includes npm publishing)
    - Verify package appears on npmjs.com
 
 **Commit Message Conventions:**
