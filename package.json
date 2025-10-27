@@ -1,6 +1,6 @@
 {
   "name": "static-research-engine",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Transform documents into structured, queryable span artifacts with intelligent search and ranking",
   "type": "module",
   "main": "dist/runtime/api/index.js",
