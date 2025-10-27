@@ -2,6 +2,11 @@
 
 > Transform documents into structured, queryable span artifacts with intelligent search and ranking
 
+[![npm version](https://img.shields.io/npm/v/static-research-engine.svg)](https://www.npmjs.com/package/static-research-engine)
+[![npm downloads](https://img.shields.io/npm/dm/static-research-engine.svg)](https://www.npmjs.com/package/static-research-engine)
+[![GitHub Release](https://img.shields.io/github/v/release/phillt/SRE)](https://github.com/phillt/SRE/releases)
+[![Build](https://github.com/phillt/SRE/actions/workflows/build.yml/badge.svg)](https://github.com/phillt/SRE/actions/workflows/build.yml)
+[![Format Check](https://github.com/phillt/SRE/actions/workflows/format.yml/badge.svg)](https://github.com/phillt/SRE/actions/workflows/format.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
@@ -72,10 +77,10 @@ When combined:
 
 ```bash
 # Global installation
-npm install -g sre
+npm install -g static-research-engine
 
 # Project installation
-npm install sre
+npm install static-research-engine
 ```
 
 ### From source
@@ -129,7 +134,7 @@ sre-search output/ "section" --rank=tfidf --limit=5
 ### 3. Use the Reader API
 
 ```javascript
-import { createReader } from 'sre'
+import { createReader } from 'static-research-engine'
 
 // Load artifacts
 const reader = await createReader('output/')
@@ -206,7 +211,7 @@ Examples:
 The `Reader` class provides read-only access to artifacts:
 
 ```typescript
-import { createReader } from 'sre'
+import { createReader } from 'static-research-engine'
 
 const reader = await createReader('output-dir/')
 
@@ -327,8 +332,8 @@ npm run format
 npm run build
 
 # Generate test corpus
-node dist/cli/index.js test-input/sample.md -o dist/final-test
-node dist/cli/index.js test-input/sample.txt -o dist/test-txt
+node dist/cli/index.js demo/test-input/sample.md -o dist/final-test
+node dist/cli/index.js demo/test-input/sample.txt -o dist/test-txt
 
 # Run all verification tests
 node demo/reader/verify.js && \

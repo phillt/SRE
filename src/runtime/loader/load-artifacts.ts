@@ -30,7 +30,9 @@ export interface LoadedArtifacts {
  * @returns Loaded and validated artifacts
  * @throws Error if required files are missing or invalid
  */
-export async function loadArtifacts(outputDir: string): Promise<LoadedArtifacts> {
+export async function loadArtifacts(
+  outputDir: string
+): Promise<LoadedArtifacts> {
   // Check if directory exists
   try {
     const stats = await fs.stat(outputDir)
@@ -69,7 +71,9 @@ export async function loadArtifacts(outputDir: string): Promise<LoadedArtifacts>
         const spanJson = JSON.parse(line)
         return SpanSchema.parse(spanJson)
       } catch (error) {
-        throw new Error(`Invalid span at line ${index + 1}: ${(error as Error).message}`)
+        throw new Error(
+          `Invalid span at line ${index + 1}: ${(error as Error).message}`
+        )
       }
     })
   } catch (error) {
@@ -89,7 +93,9 @@ export async function loadArtifacts(outputDir: string): Promise<LoadedArtifacts>
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
       // File exists but failed to parse - this is an error
-      throw new Error(`Failed to load nodeMap.json: ${(error as Error).message}`)
+      throw new Error(
+        `Failed to load nodeMap.json: ${(error as Error).message}`
+      )
     }
     // File doesn't exist - that's OK, it's optional
   }
@@ -104,7 +110,9 @@ export async function loadArtifacts(outputDir: string): Promise<LoadedArtifacts>
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
       // File exists but failed to parse - this is an error
-      throw new Error(`Failed to load buildReport.json: ${(error as Error).message}`)
+      throw new Error(
+        `Failed to load buildReport.json: ${(error as Error).message}`
+      )
     }
     // File doesn't exist - that's OK, it's optional
   }

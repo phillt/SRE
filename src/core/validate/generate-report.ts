@@ -25,7 +25,10 @@ function truncateText(text: string, maxLength: number = 200): string {
 /**
  * Calculate percentile value from sorted array using nearest rank method
  */
-function calculatePercentile(sortedValues: number[], percentile: number): number {
+function calculatePercentile(
+  sortedValues: number[],
+  percentile: number
+): number {
   if (sortedValues.length === 0) {
     return 0
   }
@@ -42,7 +45,11 @@ function calculatePercentile(sortedValues: number[], percentile: number): number
  * @param nodeMap - Hierarchical node map
  * @returns BuildReport with quality metrics
  */
-export function generateReport(spans: Span[], manifest: Manifest, nodeMap: NodeMap): BuildReport {
+export function generateReport(
+  spans: Span[],
+  manifest: Manifest,
+  nodeMap: NodeMap
+): BuildReport {
   // Define thresholds
   const thresholds: Thresholds = {
     shortSpanChars: 20,
@@ -105,8 +112,12 @@ export function generateReport(spans: Span[], manifest: Manifest, nodeMap: NodeM
   }
 
   // Warnings: count short and long spans
-  const shortSpans = spans.filter((span) => span.text.length < thresholds.shortSpanChars).length
-  const longSpans = spans.filter((span) => span.text.length > thresholds.longSpanChars).length
+  const shortSpans = spans.filter(
+    (span) => span.text.length < thresholds.shortSpanChars
+  ).length
+  const longSpans = spans.filter(
+    (span) => span.text.length > thresholds.longSpanChars
+  ).length
 
   // Duplicate detection: exact text matches
   const textCounts = new Map<string, number>()
@@ -114,7 +125,9 @@ export function generateReport(spans: Span[], manifest: Manifest, nodeMap: NodeM
     const count = textCounts.get(span.text) ?? 0
     textCounts.set(span.text, count + 1)
   }
-  const duplicateTexts = Array.from(textCounts.values()).filter((count) => count > 1).length
+  const duplicateTexts = Array.from(textCounts.values()).filter(
+    (count) => count > 1
+  ).length
 
   const warnings: Warnings = {
     shortSpans,

@@ -1,5 +1,5 @@
 {
-  "name": "sre",
+  "name": "static-research-engine",
   "version": "1.0.0",
   "description": "Transform documents into structured, queryable span artifacts with intelligent search and ranking",
   "type": "module",

@@ -1,4 +1,8 @@
-import { getReaderFor, enrichReaderOutput, detectFormat } from '../adapters/readers/index.js'
+import {
+  getReaderFor,
+  enrichReaderOutput,
+  detectFormat,
+} from '../adapters/readers/index.js'
 import { writeSpansJsonl } from '../adapters/writers/jsonl-writer.js'
 import { writeManifest } from '../adapters/writers/manifest-writer.js'
 import { writeReport } from '../adapters/writers/report-writer.js'

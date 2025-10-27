@@ -77,8 +77,8 @@ Project maintainers are responsible for clarifying standards and will take appro
 
 6. **Generate test corpus:**
    ```bash
-   node dist/cli/index.js test-input/sample.md -o dist/final-test
-   node dist/cli/index.js test-input/sample.txt -o dist/test-txt
+   node dist/cli/index.js demo/test-input/sample.md -o dist/final-test
+   node dist/cli/index.js demo/test-input/sample.txt -o dist/test-txt
    ```
 
 7. **Run verification tests:**
@@ -415,6 +415,62 @@ test('Feature works as expected', () => {
 - **demo/*/README.md** - Feature-specific user docs
 - **demo/*/*.md** - Detailed implementation docs
 - **docs/*.md** - Technical implementation notes
+
+## Release Process
+
+### For Maintainers
+
+Creating a new release is automated through GitHub Actions:
+
+1. **Update version in package.json:**
+   ```bash
+   npm version patch  # For bug fixes (1.0.0 -> 1.0.1)
+   npm version minor  # For new features (1.0.0 -> 1.1.0)
+   npm version major  # For breaking changes (1.0.0 -> 2.0.0)
+   ```
+
+2. **Push the version tag:**
+   ```bash
+   git push origin master --tags
+   ```
+
+3. **Automated workflows will:**
+   - Build the project
+   - Generate changelog from commits since last tag
+   - Create a GitHub Release with release notes
+   - Automatically publish the package to npm
+
+### Setting Up npm Publishing (First Time Only)
+
+To enable automatic npm publishing, you need to configure an npm token:
+
+1. **Generate an npm token:**
+   - Log in to [npmjs.com](https://www.npmjs.com/)
+   - Go to Account Settings → Access Tokens
+   - Click "Generate New Token" → Choose "Automation" type
+   - Copy the generated token
+
+2. **Add token to GitHub:**
+   - Go to repository Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+   - Name: `NPM_TOKEN`
+   - Value: Paste your npm token
+   - Click "Add secret"
+
+3. **Verify setup:**
+   - Create a test release
+   - Check the "Publish to npm" workflow runs successfully
+   - Verify package appears on npmjs.com
+
+**Commit Message Conventions:**
+
+Use clear prefixes to help generate meaningful changelogs:
+- `Add:` - New features
+- `Fix:` - Bug fixes
+- `Update:` - Enhancements to existing features
+- `Refactor:` - Code improvements without behavior changes
+- `Docs:` - Documentation updates
+- `Test:` - Test additions or updates
 
 ## Community
 
