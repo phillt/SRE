@@ -39,8 +39,8 @@ export class Reader {
   private readonly orderedSpans: Span[]
   private readonly orderToId: Map<number, string>
   private readonly sectionIndex?: Map<string, string[]>
-  private searchIndex?: LexicalIndex  // Lazy-initialized on first search
-  private tfidfRanker?: TFIDFRanker  // Lazy-initialized with search index
+  private searchIndex?: LexicalIndex // Lazy-initialized on first search
+  private tfidfRanker?: TFIDFRanker // Lazy-initialized with search index
 
   /**
    * Construct a Reader from loaded artifacts.
@@ -60,7 +60,9 @@ export class Reader {
     }
 
     // Build ordered spans (sorted by meta.order)
-    this.orderedSpans = [...artifacts.spans].sort((a, b) => a.meta.order - b.meta.order)
+    this.orderedSpans = [...artifacts.spans].sort(
+      (a, b) => a.meta.order - b.meta.order
+    )
 
     // Build orderToId index
     this.orderToId = new Map()
@@ -71,7 +73,9 @@ export class Reader {
     // Build section index if nodeMap exists
     if (this.nodeMap) {
       this.sectionIndex = new Map()
-      for (const [sectionId, section] of Object.entries(this.nodeMap.sections)) {
+      for (const [sectionId, section] of Object.entries(
+        this.nodeMap.sections
+      )) {
         this.sectionIndex.set(sectionId, section.paragraphIds)
       }
     }
@@ -152,7 +156,11 @@ export class Reader {
 
     // Collect spans after
     const maxOrder = this.orderedSpans.length - 1
-    for (let i = targetOrder + 1; i <= Math.min(maxOrder, targetOrder + after); i++) {
+    for (
+      let i = targetOrder + 1;
+      i <= Math.min(maxOrder, targetOrder + after);
+      i++
+    ) {
       const spanId = this.orderToId.get(i)
       if (spanId) {
         result.push(spanId)
@@ -253,7 +261,7 @@ export class Reader {
 
     // Convert to spans and filter out any undefined
     let spans = matchingIds
-      .map(id => this.spansById.get(id))
+      .map((id) => this.spansById.get(id))
       .filter((span): span is Span => span !== undefined)
 
     // Apply ranking if requested

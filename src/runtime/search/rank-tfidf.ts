@@ -87,7 +87,7 @@ export class TFIDFRanker {
    */
   constructor(index: LexicalIndex, spans: Span[]) {
     this.index = index
-    this.spansById = new Map(spans.map(s => [s.id, s]))
+    this.spansById = new Map(spans.map((s) => [s.id, s]))
   }
 
   /**
@@ -109,7 +109,10 @@ export class TFIDFRanker {
    * @param queryTokens - Pre-tokenized query terms
    * @returns Array of {id, score} sorted by score descending
    */
-  rank(spanIds: string[], queryTokens: string[]): Array<{ id: string; score: number }> {
+  rank(
+    spanIds: string[],
+    queryTokens: string[]
+  ): Array<{ id: string; score: number }> {
     const totalDocs = this.index.getTotalDocuments()
 
     // Compute IDF for each query token (global, from postings)

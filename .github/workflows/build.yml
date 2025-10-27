@@ -32,8 +32,8 @@ jobs:
 
       - name: Generate test corpus
         run: |
-          node dist/cli/index.js test-input/sample.md -o dist/final-test
-          node dist/cli/index.js test-input/sample.txt -o dist/test-txt
+          node dist/cli/index.js demo/test-input/sample.md -o dist/final-test
+          node dist/cli/index.js demo/test-input/sample.txt -o dist/test-txt
 
       - name: Run verification tests
         run: |

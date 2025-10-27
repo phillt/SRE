@@ -1,6 +1,12 @@
 import { Span } from '../contracts/span.js'
 import { Manifest } from '../contracts/manifest.js'
-import { NodeMap, BookNode, ChapterNode, SectionNode, ParagraphNode } from '../contracts/node-map.js'
+import {
+  NodeMap,
+  BookNode,
+  ChapterNode,
+  SectionNode,
+  ParagraphNode,
+} from '../contracts/node-map.js'
 import { detectHeading } from '../detect/detect-heading.js'
 import { generateChapterId } from '../ids/generate-chapter-id.js'
 import { generateSectionId } from '../ids/generate-section-id.js'

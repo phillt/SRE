@@ -17,7 +17,10 @@ import { HeadingPathBuilder } from '../detect/build-heading-path.js'
  * @param format - The document format (e.g., 'md', 'markdown', 'txt')
  * @returns Array of spans with metadata including heading paths
  */
-export function splitIntoParagraphs(normalizedText: string, format: string): Span[] {
+export function splitIntoParagraphs(
+  normalizedText: string,
+  format: string
+): Span[] {
   // Split on two or more newlines
   const rawParagraphs = normalizedText.split(/\n{2,}/)
 

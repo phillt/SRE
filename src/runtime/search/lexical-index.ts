@@ -20,9 +20,9 @@ import { Span } from '../../core/contracts/span.js'
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')  // Replace non-alphanumeric with spaces
-    .split(/\s+/)                  // Split on whitespace
-    .filter(token => token.length > 0)  // Remove empty strings
+    .replace(/[^a-z0-9]+/g, ' ') // Replace non-alphanumeric with spaces
+    .split(/\s+/) // Split on whitespace
+    .filter((token) => token.length > 0) // Remove empty strings
 }
 
 /**
@@ -76,13 +76,17 @@ export class LexicalIndex {
     }
 
     // Get span ID sets for each token
-    const spanSets = queryTokens.map(token => this.index.get(token) || new Set<string>())
+    const spanSets = queryTokens.map(
+      (token) => this.index.get(token) || new Set<string>()
+    )
 
     // Intersect sets (AND logic for multi-word queries)
     let matchingSpans = new Set(spanSets[0])
 
     for (let i = 1; i < spanSets.length; i++) {
-      matchingSpans = new Set([...matchingSpans].filter(id => spanSets[i].has(id)))
+      matchingSpans = new Set(
+        [...matchingSpans].filter((id) => spanSets[i].has(id))
+      )
     }
 
     // Convert to array

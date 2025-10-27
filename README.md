@@ -332,8 +332,8 @@ npm run format
 npm run build
 
 # Generate test corpus
-node dist/cli/index.js test-input/sample.md -o dist/final-test
-node dist/cli/index.js test-input/sample.txt -o dist/test-txt
+node dist/cli/index.js demo/test-input/sample.md -o dist/final-test
+node dist/cli/index.js demo/test-input/sample.txt -o dist/test-txt
 
 # Run all verification tests
 node demo/reader/verify.js && \

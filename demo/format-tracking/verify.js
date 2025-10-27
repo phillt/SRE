@@ -13,7 +13,7 @@ import { readFileSync, rmSync, existsSync } from 'fs'
 const TESTS = [
   {
     name: 'Auto-detection with .md file',
-    command: 'node dist/cli/index.js test-input/sample.md -o dist/test-auto',
+    command: 'node dist/cli/index.js demo/test-input/sample.md -o dist/test-auto',
     outputDir: 'dist/test-auto',
     expectedManifest: {
       format: 'md',
@@ -27,7 +27,7 @@ const TESTS = [
   },
   {
     name: 'Explicit format with --format md',
-    command: 'node dist/cli/index.js test-input/sample.md --format md -o dist/test-explicit',
+    command: 'node dist/cli/index.js demo/test-input/sample.md --format md -o dist/test-explicit',
     outputDir: 'dist/test-explicit',
     expectedManifest: {
       format: 'md',
@@ -41,7 +41,7 @@ const TESTS = [
   },
   {
     name: 'Format override on .txt with --format markdown',
-    command: 'node dist/cli/index.js test-input/sample.txt --format markdown -o dist/test-override',
+    command: 'node dist/cli/index.js demo/test-input/sample.txt --format markdown -o dist/test-override',
     outputDir: 'dist/test-override',
     expectedManifest: {
       format: 'markdown',

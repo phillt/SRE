@@ -77,8 +77,8 @@ Project maintainers are responsible for clarifying standards and will take appro
 
 6. **Generate test corpus:**
    ```bash
-   node dist/cli/index.js test-input/sample.md -o dist/final-test
-   node dist/cli/index.js test-input/sample.txt -o dist/test-txt
+   node dist/cli/index.js demo/test-input/sample.md -o dist/final-test
+   node dist/cli/index.js demo/test-input/sample.txt -o dist/test-txt
    ```
 
 7. **Run verification tests:**

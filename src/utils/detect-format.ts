@@ -17,7 +17,10 @@ import * as path from 'path'
  * detectFormat('input.pdf', 'txt') // 'txt' (explicit override)
  * detectFormat('noextension') // '' (no extension)
  */
-export function detectFormat(filePath: string, explicitFormat?: string): string {
+export function detectFormat(
+  filePath: string,
+  explicitFormat?: string
+): string {
   // If explicit format provided, use it
   if (explicitFormat) {
     return explicitFormat.toLowerCase().replace(/^\./, '')

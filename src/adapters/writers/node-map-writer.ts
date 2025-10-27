@@ -10,7 +10,10 @@ import { NodeMap, NodeMapSchema } from '../../core/contracts/node-map.js'
  * @param outputDir - Directory to write the file to
  * @returns Path to the written file
  */
-export async function writeNodeMap(nodeMap: NodeMap, outputDir: string): Promise<string> {
+export async function writeNodeMap(
+  nodeMap: NodeMap,
+  outputDir: string
+): Promise<string> {
   // Validate with Zod
   NodeMapSchema.parse(nodeMap)
 
