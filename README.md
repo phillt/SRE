@@ -21,6 +21,38 @@ SRE is a modular TypeScript pipeline that transforms text-based documents into s
 - 🔬 **Deterministic** - Identical input produces identical output
 - 📊 **Quality Metrics** - Build reports with span statistics and warnings
 
+## Why SRE?
+
+**The Problem:** LLMs are great at reasoning but terrible at reading large documents efficiently. Traditional RAG (Retrieval-Augmented Generation) systems are dynamic, lossy, and require re-embedding or vector database access for every query.
+
+**The Solution:** SRE compiles documents into **static, structured knowledge artifacts** — like a build system for language understanding. Build once, query forever.
+
+### Static vs Dynamic Retrieval
+
+| Aspect | Traditional RAG | SRE |
+|--------|----------------|-----|
+| **Data volatility** | Reinterprets embeddings per query | Fixed, compiled spans and indexes |
+| **Cost** | Requires vector DB access | One-time compile, static files |
+| **Determinism** | Varies with model embeddings | Bitwise reproducible builds |
+| **Hosting** | Needs live vector DB | Works from static JSON on any filesystem |
+| **Explainability** | Opaque vector matching | Full provenance with manifest + nodeMap |
+
+### Who It's For
+
+✅ **Engineers and researchers** who need:
+- Reproducible, explainable document retrieval for LLM pipelines
+- Offline corpus preparation for LLM reasoning, QA, or summarization
+- Static, local corpus foundation for RAG systems
+- Provenance, structure, and deterministic builds
+
+✅ **Use cases:**
+- Knowledge bases and documentation compilers
+- Offline research assistants and LLM tools
+- Dataset preparation for fine-tuning or evaluation
+- Analytical indexing (law, science, policy, technical docs)
+
+> 📖 **Read more:** See [ABOUT.md](ABOUT.md) for the complete philosophy and design rationale.
+
 ## Installation
 
 ### From npm (when published)
@@ -350,6 +382,9 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 8. Open a Pull Request
 
 ## Documentation
+
+### Philosophy & Overview
+- [ABOUT.md](ABOUT.md) - Why SRE? Philosophy, design rationale, and comparison with RAG
 
 ### User Documentation
 - [Demo Guide](demo/README.md) - Interactive examples and verification tests
