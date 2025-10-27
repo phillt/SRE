@@ -1,19 +1,51 @@
 {
-  "name": "SRE",
+  "name": "sre",
   "version": "1.0.0",
-  "description": "",
+  "description": "Transform documents into structured, queryable span artifacts with intelligent search and ranking",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/runtime/api/index.js",
   "bin": {
     "sre": "./dist/cli/index.js",
     "sre-search": "./bin/sre-search.js"
   },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\""
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "document-processing",
+    "text-analysis",
+    "search",
+    "nlp",
+    "information-retrieval",
+    "tfidf",
+    "lexical-search",
+    "typescript",
+    "span-segmentation",
+    "text-mining"
+  ],
+  "author": "phillt",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/phillt/SRE.git"
+  },
+  "homepage": "https://github.com/phillt/SRE#readme",
+  "bugs": {
+    "url": "https://github.com/phillt/SRE/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
@@ -21,7 +53,6 @@
     "prettier": "^3.6.2",
     "typescript": "^5.5.3"
   },
-  "private": true,
   "dependencies": {
     "commander": "^12.1.0",
     "fs-extra": "^11.3.2",
