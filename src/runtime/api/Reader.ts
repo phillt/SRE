@@ -346,37 +346,30 @@ export class Reader {
   }
 
   /**
-   * Search and return spans with relevance scores.
+   * Search and return spans with relevance scores and hit annotations.
    * Internal method used by retrieve().
    *
    * @param query - Search query
    * @param options - Search options
-   * @returns Array of scored spans
+   * @returns Array of scored spans with hit annotations
    */
   private searchWithScores(
     query: string,
     options?: SearchOptions
-  ): ScoredSpan[] {
-    // Reuse existing search logic but capture scores
-    const spans = this.search(query, options)
+  ): Array<{ result: SearchResult; span: Span }> {
+    // Get search results with hit annotations
+    const searchResults = this.search(query, options)
 
-    if (options?.rank === 'tfidf' && this.tfidfRanker) {
-      // Re-compute scores for these spans
-      const queryTokens = tokenize(query)
-      const spanIds = spans.map((s) => s.id)
-      const scored = this.tfidfRanker.rank(spanIds, queryTokens)
-
-      // Build score map
-      const scoreMap = new Map(scored.map((s) => [s.id, s.score]))
-
-      return spans.map((span) => ({
-        span,
-        score: scoreMap.get(span.id) || 0,
-      }))
-    }
-
-    // No ranking - score = 0
-    return spans.map((span) => ({ span, score: 0 }))
+    // Map results to spans
+    return searchResults
+      .map((result) => {
+        const span = this.spansById.get(result.id)
+        if (!span) return null
+        return { result, span }
+      })
+      .filter(
+        (item): item is { result: SearchResult; span: Span } => item !== null
+      )
   }
 
   /**
