@@ -23,6 +23,8 @@ SRE is a modular TypeScript pipeline that transforms text-based documents into s
 - 🎯 **TF-IDF Ranking** - Relevance scoring with length normalization and phrase boosting
 - 🧠 **Hybrid Ranking** - Fuses lexical (TF-IDF) and semantic (embedding cosine) signals
 - 🔤 **Fuzzy Matching** - Typo-tolerant search with edit distance for rare terms
+- 📦 **Retrieval Packs** - Context expansion for LLM consumption with budget controls
+- 🤖 **RAG Prompt Assembly** - Transform retrieval packs into LLM-ready prompts with citations
 - ⚡ **Zero Runtime Dependencies** - Lightweight reader with no external deps
 - 🛠️ **CLI Tools** - Build pipeline and search utilities
 - 🔬 **Deterministic** - Identical input produces identical output
@@ -166,6 +168,22 @@ const contextIds = reader.neighbors('span:000003', { before: 1, after: 1 })
 // Navigate sections
 const sections = reader.listSections()
 const section = reader.getSection('sec:000001')
+
+// Retrieve context packs for LLM consumption
+const packs = reader.retrieve('error handling', {
+  limit: 5,
+  expand: 'neighbors',
+  rank: 'tfidf'
+})
+
+// Assemble into LLM-ready prompt
+const assembled = reader.assemblePrompt({
+  question: 'How should I handle errors?',
+  packs: packs
+})
+console.log(assembled.prompt.system)  // System instructions
+console.log(assembled.prompt.user)    // User prompt with citations
+console.log(assembled.citations)      // Citation metadata
 ```
 
 ## CLI Tools
@@ -308,12 +326,14 @@ node demo/reader/demo.js      # Reader API demo
 node demo/search/demo.js      # Search and fuzzy demo
 node demo/ranking/demo.js     # TF-IDF and hybrid ranking demo
 node demo/retrieval/demo.js   # Retrieval packs demo
+node demo/rag/demo.js         # RAG prompt assembly demo
 
-# Run verification tests (111 total tests)
+# Run verification tests (132 total tests)
 node demo/reader/verify.js    # 26 tests
 node demo/search/verify.js    # 35 tests (includes fuzzy)
 node demo/ranking/verify.js   # 22 tests (TF-IDF + hybrid)
 node demo/retrieval/verify.js # 28 tests
+node demo/rag/verify.js       # 21 tests
 
 # Example CLI tool
 node demo/reader/example-cli.js output/ info
@@ -332,11 +352,12 @@ SRE/
 │   ├── adapters/     # I/O (readers, writers)
 │   └── utils/        # Shared utilities
 ├── bin/              # Production CLI tools
-├── demo/             # Interactive demos and tests (111 total)
+├── demo/             # Interactive demos and tests (132 total)
 │   ├── reader/       # Reader API demos (26 tests)
 │   ├── search/       # Search and fuzzy demos (35 tests)
 │   ├── ranking/      # Ranking demos (22 tests: TF-IDF + hybrid)
 │   ├── retrieval/    # Retrieval packs demos (28 tests)
+│   ├── rag/          # RAG prompt assembly demos (21 tests)
 │   └── format-tracking/  # Format detection tests
 ├── docs/             # Technical implementation docs
 └── dist/             # Compiled JavaScript (after build)
@@ -461,6 +482,7 @@ Completed features:
 - [x] Fuzzy matching for typos
 - [x] Semantic search with embeddings (hybrid ranking)
 - [x] Retrieval packs for LLM context
+- [x] RAG prompt assembly with citations
 
 Potential future enhancements:
 - [ ] BM25 ranking algorithm
