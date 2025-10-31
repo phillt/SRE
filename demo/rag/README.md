@@ -32,13 +32,12 @@ console.log('Citations:', assembled.citations)
 
 ## Core Concept
 
-**Problem**: Retrieved context needs to be formatted into a structured prompt with proper citations and budget management.
+**Problem**: Retrieved context needs to be formatted into a structured prompt with proper citations.
 
 **Solution**: `assemblePrompt()` automatically:
 - Formats context blocks with citation markers
 - Builds system and user prompts
 - Maps citations to source metadata
-- Enforces budget constraints with headroom
 - Produces deterministic, reproducible output
 
 ## API
@@ -50,9 +49,7 @@ Converts retrieval packs into a structured prompt with citations.
 **Parameters**:
 - `question` (string): The user's question or instruction
 - `packs` (RetrievalPack[]): Retrieved context packs (from `retrieve()`)
-- `headroomTokens` (number, optional): Safety buffer for budget (default: 300)
 - `style` ('qa' | 'summarize', optional): Prompt style (default: 'qa')
-- `citationStyle` ('numeric' | 'footnote', optional): Citation format (default: 'numeric')
 
 **Returns**: `AssembledPrompt`
 
@@ -113,18 +110,15 @@ const assembled = reader.assemblePrompt({
 
 ## Citation Format
 
-### Numeric Citations (default)
-
-Uses Unicode superscript numbers for compact citations.
+Citations use Unicode superscript numbers for compact, clear references.
 
 ```javascript
 const assembled = reader.assemblePrompt({
   question: 'What is this about?',
-  packs: packs,
-  citationStyle: 'numeric'  // default
+  packs: packs
 })
 
-// Produces markers: [¹], [²], [³], ...
+// Produces numeric markers: [¹], [²], [³], ...
 // User prompt includes: "You may reference [¹]…[³]."
 ```
 
@@ -144,41 +138,42 @@ Path: Chapter 3 > Section 3.2
 
 ## Budget Management
 
-The `headroomTokens` parameter provides a safety buffer to ensure the final prompt doesn't exceed token limits.
+Budget constraints are applied at the **retrieval stage** using `retrieve()`'s `maxTokens` parameter.
 
 ### How It Works
 
-1. Base prompt size calculated (system + user question)
-2. Packs added in order (highest score first)
-3. Stop before exceeding: `baseSize + contextSize + headroomTokens`
-4. Dropped packs are always lowest-scoring
+1. `retrieve()` applies budget constraints and returns limited packs
+2. `assemblePrompt()` processes **all** provided packs
+3. All packs result in citations (no additional filtering)
 
 ### Example
 
 ```javascript
-// Retrieve many candidate packs
-const packs = reader.retrieve('common term', {
+// Apply budget at retrieval stage
+const packs = reader.retrieve('machine learning', {
   limit: 20,
-  rank: 'tfidf'
+  rank: 'tfidf',
+  maxTokens: 500  // Limit total context size
 })
 
-// Tight budget - will drop lowest-scoring packs
+console.log(`Retrieved ${packs.length} packs`)
+
+// Assembly processes all retrieved packs
 const assembled = reader.assemblePrompt({
-  question: 'What does this discuss?',
-  packs: packs,
-  headroomTokens: 100  // Reserve 100 tokens for model response
+  question: 'What is machine learning?',
+  packs: packs
 })
 
-console.log(`Used ${assembled.citations.length} of ${packs.length} packs`)
-console.log(`Estimated tokens: ${assembled.tokensEstimated}`)
+console.log(`Assembled ${assembled.citations.length} citations`)
+// assembled.citations.length === packs.length (always)
 ```
 
 ### Budget Strategy
 
-- **Default headroom**: 300 tokens (safe for most use cases)
-- **Tight budgets**: Use lower headroom, more packs will be dropped
-- **Loose budgets**: Use higher headroom for safety
-- **No budget**: Set very high headroom (e.g., 100000)
+- **Control pack count**: Use `limit` parameter in `retrieve()`
+- **Control total size**: Use `maxTokens` parameter in `retrieve()`
+- **Fine-grained control**: Combine both parameters for precise budgeting
+- **No budget**: Omit `maxTokens` (will use all packs up to `limit`)
 
 ## Determinism Guarantees
 
@@ -187,7 +182,7 @@ console.log(`Estimated tokens: ${assembled.tokensEstimated}`)
 ✅ Same inputs → identical output (bitwise reproducible)
 ✅ Citation order matches pack order (score desc, order asc)
 ✅ No randomness in marker assignment
-✅ Stable pack dropping order (lowest score last)
+✅ All provided packs are processed
 ✅ Unicode normalization preserved from corpus
 
 ## Integration Example
@@ -210,8 +205,7 @@ const packs = reader.retrieve('neural networks', {
 // 2. Assemble prompt
 const assembled = reader.assemblePrompt({
   question: 'Explain neural networks',
-  packs: packs,
-  headroomTokens: 200
+  packs: packs
 })
 
 // 3. Call your LLM
@@ -272,17 +266,18 @@ const assembled = reader.assemblePrompt({
 
 ## Token Estimation
 
-Token estimation uses a simple character count heuristic:
+Token estimation uses a simple character count as a proxy:
 
 ```
 estimatedTokens ≈ characterCount
 ```
 
-This is conservative for English text (actual ratio ~4:1 chars:tokens). Adjust your `headroomTokens` accordingly:
+This is conservative for English text (actual ratio ~4:1 chars:tokens). The estimate helps you:
 
-- English: Use headroom × 0.75 for typical text
-- Code: Use headroom × 1.0 (higher token density)
-- Other languages: Varies by language
+- Understand total prompt size
+- Calculate approximate LLM costs
+- Monitor context usage
+- Set appropriate `maxTokens` budgets at retrieval stage
 
 ## Testing
 

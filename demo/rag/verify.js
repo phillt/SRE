@@ -5,7 +5,7 @@
  *
  * Tests all acceptance criteria:
  * 1. Determinism - Same inputs → identical output
- * 2. Budget overflow - Drops lowest-score packs
+ * 2. Pack processing - All provided packs are assembled
  * 3. Citation mapping - All markers in context and citation map
  * 4. Missing headingPath - Handles gracefully
  * 5. Summarize style - Different system prompt
@@ -232,52 +232,45 @@ test('Deterministic citation order', () => {
   }
 })
 
-// Test 10: Budget handling
-console.log('\nTest Group 3: Budget Constraints')
+// Test 10: Pack processing
+console.log('\nTest Group 3: Pack Processing')
 
-test('headroomTokens respected', () => {
-  const packs = reader.retrieve('the', { limit: 10 })
-  const headroomTokens = 100
+test('All provided packs are processed', () => {
+  const packs = reader.retrieve('section', { limit: 3, rank: 'tfidf' })
 
   const result = reader.assemblePrompt({
     question: 'What is this about?',
     packs,
-    headroomTokens,
   })
 
-  // tokensEstimated should account for headroom
-  // The actual tokens used should be less than estimated by at most headroom
-  if (result.tokensEstimated < 0) {
-    throw new Error('tokensEstimated should be non-negative')
+  // All packs should result in citations
+  if (result.citations.length !== packs.length) {
+    throw new Error(`Expected ${packs.length} citations, got ${result.citations.length}`)
+  }
+
+  // Citations should match pack order
+  for (let i = 0; i < packs.length; i++) {
+    if (result.citations[i].packId !== packs[i].packId) {
+      throw new Error('Citation order should match pack order')
+    }
   }
 })
 
-test('Budget overflow drops lowest-score packs', () => {
-  const packs = reader.retrieve('the', { limit: 10, rank: 'tfidf' })
+test('Token estimation is non-negative', () => {
+  const packs = reader.retrieve('the', { limit: 5 })
 
-  if (packs.length < 5) {
-    console.log('   (Skipped: need 5+ packs)')
-    return
-  }
-
-  // Very small headroom should force dropping packs
   const result = reader.assemblePrompt({
     question: 'What is this?',
     packs,
-    headroomTokens: 50,
   })
 
-  // Should have fewer citations than packs due to budget
-  if (result.citations.length >= packs.length) {
-    console.log('   (Skipped: budget did not force dropping)')
-    return
+  if (result.tokensEstimated < 0) {
+    throw new Error('tokensEstimated should be non-negative')
   }
 
-  // Remaining citations should be the highest-scoring ones (first N)
-  for (let i = 0; i < result.citations.length; i++) {
-    if (result.citations[i].packId !== packs[i].packId) {
-      throw new Error('Should drop lowest-score packs, not highest')
-    }
+  // Estimated tokens should be at least as large as the question
+  if (result.tokensEstimated < 'What is this?'.length) {
+    throw new Error('tokensEstimated should account for at least the question')
   }
 })
 

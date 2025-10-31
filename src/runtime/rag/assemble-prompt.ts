@@ -3,7 +3,6 @@ import {
   AssembledPrompt,
   CitationEntry,
   PromptStyle,
-  CitationStyle,
 } from '../../core/contracts/rag-prompt.js'
 import { RetrievalPack } from '../../core/contracts/retrieval-pack.js'
 
@@ -102,7 +101,8 @@ function extractSpanOffsets(
 }
 
 /**
- * Estimate tokens from character count (simple heuristic: chars = tokens)
+ * Estimate tokens using character count as a proxy.
+ * This is a conservative heuristic (actual ratio is ~4:1 chars:tokens for English).
  */
 function estimateTokens(text: string): number {
   return text.length
@@ -114,10 +114,12 @@ function estimateTokens(text: string): number {
  * Converts ranked retrieval packs into a structured prompt ready for LLM consumption.
  * Includes:
  * - System instructions based on style (qa/summarize)
- * - User question
- * - Context blocks with numeric citations
+ * - User question with context blocks
+ * - Numeric citation markers ([¹], [²], etc.)
  * - Citation metadata mapping markers to sources
- * - Final budget check with headroom
+ *
+ * Budget constraints should be applied at the retrieve() stage using the
+ * maxTokens parameter. This function processes all provided packs.
  *
  * @param options - Assembly options
  * @returns Assembled prompt with citations
@@ -125,14 +127,7 @@ function estimateTokens(text: string): number {
 export function assemblePrompt(
   options: AssemblePromptOptions
 ): AssembledPrompt {
-  const {
-    question,
-    packs,
-    docId,
-    headroomTokens = 300,
-    style = 'qa',
-    citationStyle = 'numeric',
-  } = options
+  const { question, packs, docId, style = 'qa' } = options
 
   // Handle empty packs
   if (packs.length === 0) {
@@ -150,44 +145,26 @@ export function assemblePrompt(
   }
 
   // Packs are already sorted by score (desc), order (asc) from retrieve()
-  // We'll process them in order and apply budget constraints
+  // Budget constraints (maxTokens) were already applied by retrieve()
+  // We process all provided packs in order
 
   // Build system prompt
   const systemPrompt = getSystemPrompt(style)
 
-  // Build citations and context blocks with budget awareness
+  // Build citations and context blocks
   const citations: CitationEntry[] = []
   const contextBlocks: string[] = []
-  let totalChars = 0
 
-  // Estimate base prompt size
-  const baseUserPrompt = `${question}\n\nYou may reference the following context:`
-  const baseSize = estimateTokens(systemPrompt) + estimateTokens(baseUserPrompt)
-
-  // Reserve headroom
-  const availableTokens = Number.MAX_SAFE_INTEGER // No maxTokens constraint from retrieve()
-  const budgetLimit = availableTokens - headroomTokens
-
-  // Process packs in order, applying budget
+  // Process packs in order
   for (let i = 0; i < packs.length; i++) {
     const pack = packs[i]
     const marker = toSuperscriptMarker(i + 1)
 
     // Format context block
     const contextBlock = formatContextBlock(pack, marker, docId)
-    const blockSize = estimateTokens(contextBlock)
-
-    // Check if adding this block would exceed budget
-    const projectedTotal = baseSize + totalChars + blockSize
-
-    if (projectedTotal > budgetLimit) {
-      // Stop here - don't add this pack or any remaining ones
-      break
-    }
 
     // Add to context
     contextBlocks.push(contextBlock)
-    totalChars += blockSize
 
     // Build citation entry
     const citation: CitationEntry = {

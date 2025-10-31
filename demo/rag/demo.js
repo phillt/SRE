@@ -90,7 +90,7 @@ async function demo() {
   console.log('User Prompt Preview (first 250 chars):')
   console.log(assembled2.prompt.user.substring(0, 250) + '...\n')
 
-  // Example 3: Budget constraints
+  // Example 3: Budget constraints at retrieval stage
   console.log('─'.repeat(70))
   console.log('Example 3: Budget Constraints')
   console.log('─'.repeat(70))
@@ -98,53 +98,51 @@ async function demo() {
   const query3 = 'the'
   console.log(`Query: "${query3}" (common word, many hits)\n`)
 
-  // Retrieve many packs
-  const packs3 = reader.retrieve(query3, {
+  // Budget control happens at retrieve() stage
+  console.log('Without budget constraint:')
+  const packs3a = reader.retrieve(query3, {
     limit: 10,
     perHitNeighbors: 1,
     rank: 'tfidf',
   })
 
-  console.log(`Retrieved ${packs3.length} packs`)
-
-  // Calculate total size
-  let totalChars = 0
-  for (const pack of packs3) {
-    totalChars += pack.meta.charCount
+  let totalChars3a = 0
+  for (const pack of packs3a) {
+    totalChars3a += pack.meta.charCount
   }
-  console.log(`Total pack chars: ${totalChars}\n`)
 
-  // Without headroom constraint (large headroom)
+  console.log(`  Retrieved ${packs3a.length} packs (${totalChars3a} chars)\n`)
+
+  // With tight budget constraint
+  console.log('With tight budget (maxTokens=200):')
+  const packs3b = reader.retrieve(query3, {
+    limit: 10,
+    perHitNeighbors: 1,
+    rank: 'tfidf',
+    maxTokens: 200,
+  })
+
+  let totalChars3b = 0
+  for (const pack of packs3b) {
+    totalChars3b += pack.meta.charCount
+  }
+
+  console.log(`  Retrieved ${packs3b.length} packs (${totalChars3b} chars)`)
+  console.log(`  Budget respected: ${totalChars3b <= 200 ? 'Yes' : 'No'}\n`)
+
+  // Both result in full assembly of retrieved packs
   const assembled3a = reader.assemblePrompt({
-    question: 'What does this document discuss?',
-    packs: packs3,
-    headroomTokens: 10000, // Very large headroom
+    question: 'What does this discuss?',
+    packs: packs3a,
   })
 
-  console.log(`Without tight budget: ${assembled3a.citations.length} citations`)
-  console.log(`  Estimated tokens: ${assembled3a.tokensEstimated}\n`)
-
-  // With tight headroom constraint
   const assembled3b = reader.assemblePrompt({
-    question: 'What does this document discuss?',
-    packs: packs3,
-    headroomTokens: 100, // Tight headroom
+    question: 'What does this discuss?',
+    packs: packs3b,
   })
 
-  console.log(`With tight budget (headroom=100): ${assembled3b.citations.length} citations`)
-  console.log(`  Estimated tokens: ${assembled3b.tokensEstimated}`)
-
-  // Show which packs were kept
-  console.log('  Kept packs (highest scores):')
-  for (let i = 0; i < Math.min(3, assembled3b.citations.length); i++) {
-    const citation = assembled3b.citations[i]
-    const pack = packs3.find((p) => p.packId === citation.packId)
-    if (pack) {
-      console.log(
-        `    ${citation.marker} Score: ${pack.entry.score.toFixed(4)}, Chars: ${pack.meta.charCount}`
-      )
-    }
-  }
+  console.log(`Assembly without budget: ${assembled3a.citations.length} citations`)
+  console.log(`Assembly with budget: ${assembled3b.citations.length} citations`)
   console.log()
 
   // Example 4: Section expansion with full context

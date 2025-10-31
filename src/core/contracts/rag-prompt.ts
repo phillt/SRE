@@ -9,22 +9,13 @@ export const PromptStyleSchema = z.enum(['qa', 'summarize'])
 export type PromptStyle = z.infer<typeof PromptStyleSchema>
 
 /**
- * Citation style for context references
- */
-export const CitationStyleSchema = z.enum(['numeric', 'footnote'])
-
-export type CitationStyle = z.infer<typeof CitationStyleSchema>
-
-/**
  * Options for assembling prompts from retrieval packs
  */
 export const AssemblePromptOptionsSchema = z.object({
   question: z.string(),
   packs: z.array(RetrievalPackSchema),
   docId: z.string(),
-  headroomTokens: z.number().int().positive().optional(),
   style: PromptStyleSchema.optional(),
-  citationStyle: CitationStyleSchema.optional(),
 })
 
 export type AssemblePromptOptions = z.infer<typeof AssemblePromptOptionsSchema>

@@ -28,7 +28,6 @@ import { applyBudget } from '../retrieval/budget.js'
 import {
   AssembledPrompt,
   PromptStyle,
-  CitationStyle,
 } from '../../core/contracts/rag-prompt.js'
 import { assemblePrompt as assemblePromptCore } from '../rag/assemble-prompt.js'
 
@@ -65,9 +64,7 @@ export interface SearchOptions {
 export interface AssemblePromptOptionsReader {
   question: string
   packs: RetrievalPack[]
-  headroomTokens?: number
   style?: PromptStyle
-  citationStyle?: CitationStyle
 }
 
 /**
@@ -604,11 +601,9 @@ export class Reader {
    * - User question with context blocks
    * - Numeric citation markers ([¹], [²], etc.)
    * - Citation metadata mapping markers to sources
-   * - Final budget check with headroom (default 300 tokens)
    *
-   * The function applies a final safety check using headroomTokens to ensure
-   * the prompt doesn't exceed budget. If packs would overflow the budget,
-   * the lowest-scoring packs are dropped deterministically.
+   * Budget constraints should be applied at the retrieve() stage using maxTokens.
+   * This method processes all provided packs.
    *
    * @param options - Assembly options
    * @returns Assembled prompt with citations
