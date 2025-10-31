@@ -286,6 +286,149 @@ test('Hyphenated words split into tokens', () => {
   // We just verify no error occurs
 })
 
+// Test 12: Phrase search
+console.log('\nTest Group 5: Phrase Search')
+
+test('Single phrase matches exact text', () => {
+  const results = reader.search('"section two"')
+  if (results.length === 0) {
+    throw new Error('Expected results for phrase "section two"')
+  }
+  // Verify all results have phrase hits
+  for (const result of results) {
+    if (result.hits.phrases.length === 0) {
+      throw new Error('Result should have phrase hits')
+    }
+    const phrase = result.hits.phrases.find(p => p.phrase === 'section two')
+    if (!phrase) {
+      throw new Error('Result should have phrase "section two"')
+    }
+    if (phrase.ranges.length === 0) {
+      throw new Error('Phrase should have at least one range')
+    }
+  }
+})
+
+test('Phrase + token combination', () => {
+  const results = reader.search('"section two" paragraph')
+  // Should only return spans that have both the phrase AND the token
+  if (results.length === 0) {
+    throw new Error('Expected results for mixed query')
+  }
+  for (const result of results) {
+    const span = reader.getSpan(result.id)
+    if (!span) throw new Error(`Span ${result.id} not found`)
+    // Must have phrase "section two"
+    const hasPhrase = span.text.toLowerCase().includes('section two')
+    // Must have token "paragraph"
+    const hasToken = span.text.toLowerCase().includes('paragraph')
+    if (!hasPhrase || !hasToken) {
+      throw new Error('Result must contain both phrase and token')
+    }
+  }
+})
+
+test('Multiple phrases use AND logic', () => {
+  const results = reader.search('"section two" "paragraph"')
+  // Should only return spans that have BOTH phrases
+  for (const result of results) {
+    const span = reader.getSpan(result.id)
+    if (!span) throw new Error(`Span ${result.id} not found`)
+    const text = span.text.toLowerCase()
+    if (!text.includes('section two') || !text.includes('paragraph')) {
+      throw new Error('Result must contain all phrases')
+    }
+  }
+})
+
+test('Phrase hit offsets are correct', () => {
+  const results = reader.search('"section two"')
+  if (results.length === 0) {
+    throw new Error('Expected results for phrase search')
+  }
+  for (const result of results) {
+    const span = reader.getSpan(result.id)
+    if (!span) throw new Error(`Span ${result.id} not found`)
+
+    const phraseHit = result.hits.phrases.find(p => p.phrase === 'section two')
+    if (!phraseHit) continue
+
+    // Verify offsets are within normalized text bounds
+    for (const range of phraseHit.ranges) {
+      if (range.start < 0 || range.end > span.text.length) {
+        throw new Error('Range offsets must be within text bounds')
+      }
+      if (range.start >= range.end) {
+        throw new Error('Range start must be before end')
+      }
+    }
+  }
+})
+
+test('Empty phrase search returns no results', () => {
+  const results = reader.search('""')
+  if (results.length !== 0) {
+    throw new Error('Empty phrase should return no results')
+  }
+})
+
+test('Case insensitive phrase matching', () => {
+  const lower = reader.search('"section two"')
+  const upper = reader.search('"SECTION TWO"')
+  const mixed = reader.search('"Section Two"')
+
+  if (lower.length !== upper.length || lower.length !== mixed.length) {
+    throw new Error('Phrase search should be case insensitive')
+  }
+
+  // Check same result IDs
+  const lowerIds = lower.map(r => r.id).sort()
+  const upperIds = upper.map(r => r.id).sort()
+  if (JSON.stringify(lowerIds) !== JSON.stringify(upperIds)) {
+    throw new Error('Case variations should return same results')
+  }
+})
+
+test('Hit annotations include tokens and phrases', () => {
+  const results = reader.search('"section" and')
+  if (results.length === 0) {
+    throw new Error('Expected results')
+  }
+  for (const result of results) {
+    // Should have hit annotations
+    if (!result.hits) {
+      throw new Error('Result should have hits')
+    }
+    // Should have tokens
+    if (!result.hits.tokens || result.hits.tokens.length === 0) {
+      throw new Error('Result should have token hits')
+    }
+    // Should have phrases
+    if (!result.hits.phrases || result.hits.phrases.length === 0) {
+      throw new Error('Result should have phrase hits')
+    }
+  }
+})
+
+test('TF-IDF ranking with phrase boost', () => {
+  const results = reader.search('"section two"', { rank: 'tfidf' })
+  if (results.length === 0) {
+    throw new Error('Expected results')
+  }
+  // Results should have scores
+  for (const result of results) {
+    if (typeof result.score !== 'number') {
+      throw new Error('Result should have numeric score')
+    }
+  }
+  // Check descending score order
+  for (let i = 1; i < results.length; i++) {
+    if (results[i].score > results[i-1].score) {
+      throw new Error('Results should be sorted by score descending')
+    }
+  }
+})
+
 // Summary
 console.log('\n' + '─'.repeat(60))
 console.log(`Results: ${passed} passed, ${failed} failed`)
