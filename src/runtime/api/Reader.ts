@@ -25,6 +25,12 @@ import {
 } from '../retrieval/expand.js'
 import { dedupeAndMerge } from '../retrieval/merge-dedupe.js'
 import { applyBudget } from '../retrieval/budget.js'
+import {
+  AssembledPrompt,
+  PromptStyle,
+  CitationStyle,
+} from '../../core/contracts/rag-prompt.js'
+import { assemblePrompt as assemblePromptCore } from '../rag/assemble-prompt.js'
 
 /**
  * Options for the neighbors() method
@@ -51,6 +57,17 @@ export interface SearchOptions {
   rank?: 'none' | 'tfidf' | 'hybrid'
   fuzzy?: FuzzyOptions
   hybrid?: HybridOptions
+}
+
+/**
+ * Options for the assemblePrompt() method
+ */
+export interface AssemblePromptOptionsReader {
+  question: string
+  packs: RetrievalPack[]
+  headroomTokens?: number
+  style?: PromptStyle
+  citationStyle?: CitationStyle
 }
 
 /**
@@ -576,5 +593,30 @@ export class Reader {
 
     // Step 7: Apply budget
     return applyBudget(packs, limit, maxTokens)
+  }
+
+  /**
+   * Assemble a prompt from retrieval packs with citations.
+   *
+   * Converts ranked retrieval packs into a structured prompt ready for LLM consumption.
+   * Includes:
+   * - System instructions based on style (qa/summarize)
+   * - User question with context blocks
+   * - Numeric citation markers ([¹], [²], etc.)
+   * - Citation metadata mapping markers to sources
+   * - Final budget check with headroom (default 300 tokens)
+   *
+   * The function applies a final safety check using headroomTokens to ensure
+   * the prompt doesn't exceed budget. If packs would overflow the budget,
+   * the lowest-scoring packs are dropped deterministically.
+   *
+   * @param options - Assembly options
+   * @returns Assembled prompt with citations
+   */
+  assemblePrompt(options: AssemblePromptOptionsReader): AssembledPrompt {
+    return assemblePromptCore({
+      ...options,
+      docId: this.manifest.id,
+    })
   }
 }
