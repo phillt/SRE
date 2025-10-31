@@ -10,6 +10,8 @@ import {
   FuzzyOptions,
 } from '../search/lexical-index.js'
 import { TFIDFRanker } from '../search/rank-tfidf.js'
+import { SemanticRanker } from '../search/rank-semantic.js'
+import { HybridRanker } from '../search/rank-hybrid.js'
 import {
   RetrievalOptions,
   RetrievalPack,
@@ -33,12 +35,22 @@ export interface NeighborsOptions {
 }
 
 /**
+ * Options for hybrid ranking
+ */
+export interface HybridOptions {
+  weightLexical?: number
+  weightSemantic?: number
+  normalize?: boolean
+}
+
+/**
  * Options for the search() method
  */
 export interface SearchOptions {
   limit?: number
-  rank?: 'none' | 'tfidf'
+  rank?: 'none' | 'tfidf' | 'hybrid'
   fuzzy?: FuzzyOptions
+  hybrid?: HybridOptions
 }
 
 /**
@@ -68,6 +80,8 @@ export class Reader {
   private readonly sectionIndex?: Map<string, string[]>
   private searchIndex?: LexicalIndex // Lazy-initialized on first search
   private tfidfRanker?: TFIDFRanker // Lazy-initialized with search index
+  private semanticRanker?: SemanticRanker // Lazy-initialized for hybrid ranking
+  private hybridRanker?: HybridRanker // Lazy-initialized for hybrid ranking
 
   /**
    * Construct a Reader from loaded artifacts.
@@ -275,12 +289,22 @@ export class Reader {
    * - Phrases always use exact match
    * - Fuzzy-only hits receive a small ranking penalty
    *
-   * Results can be optionally ranked by TF-IDF relevance with phrase boosting.
-   * Without ranking, results are returned in document order (by meta.order).
-   * With ranking, results are sorted by relevance score (descending), with ties broken by document order.
+   * Ranking modes:
+   * - 'none': Document order (default)
+   * - 'tfidf': TF-IDF relevance with phrase boosting and fuzzy penalty
+   * - 'hybrid': Fuses TF-IDF (lexical) and cosine similarity (semantic) scores
+   *
+   * Hybrid ranking (if enabled):
+   * - Combines lexical (TF-IDF) and semantic (embedding cosine) signals
+   * - Default weights: 0.7 lexical, 0.3 semantic
+   * - Helps find semantically similar content even with different wording
+   * - Compatible with fuzzy matching (fuzzy affects lexical scores)
+   *
+   * Results are sorted by relevance score (descending) when ranking is enabled,
+   * with ties broken by document order.
    *
    * @param query - Search query (supports "quoted phrases" and tokens)
-   * @param options - Search options (limit, rank, fuzzy)
+   * @param options - Search options (limit, rank, fuzzy, hybrid)
    * @returns Array of search results with hit annotations
    */
   search(query: string, options?: SearchOptions): SearchResult[] {
@@ -290,12 +314,31 @@ export class Reader {
     }
 
     // Build ranker lazily if ranking is requested
-    if (options?.rank === 'tfidf' && !this.tfidfRanker) {
+    if (
+      (options?.rank === 'tfidf' || options?.rank === 'hybrid') &&
+      !this.tfidfRanker
+    ) {
       this.tfidfRanker = new TFIDFRanker(this.searchIndex, this.orderedSpans)
     }
 
+    // Build semantic/hybrid rankers lazily if hybrid ranking is requested
+    if (options?.rank === 'hybrid') {
+      if (!this.semanticRanker) {
+        this.semanticRanker = new SemanticRanker(this.orderedSpans)
+      }
+      if (!this.hybridRanker && this.tfidfRanker) {
+        this.hybridRanker = new HybridRanker(
+          this.tfidfRanker,
+          this.semanticRanker
+        )
+      }
+    }
+
     // Don't apply limit at search stage if ranking - need all results to rank properly
-    const limitAtSearch = options?.rank === 'tfidf' ? undefined : options?.limit
+    const limitAtSearch =
+      options?.rank === 'tfidf' || options?.rank === 'hybrid'
+        ? undefined
+        : options?.limit
 
     // Get matching results with hit annotations
     let results = this.searchIndex.searchWithHits(
@@ -311,6 +354,36 @@ export class Reader {
         results,
         queryTokens,
         0.1
+      )
+
+      // Sort by score descending, then by document order for ties
+      rankedResults.sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score
+        }
+        // Tie-breaker: document order
+        return a.order - b.order
+      })
+
+      results = rankedResults
+
+      // Apply limit after ranking
+      if (options?.limit !== undefined) {
+        results = results.slice(0, options.limit)
+      }
+    } else if (
+      options?.rank === 'hybrid' &&
+      this.hybridRanker &&
+      this.semanticRanker
+    ) {
+      const queryTokens = tokenize(query)
+      const queryEmbedding = this.semanticRanker.embedQuery(query)
+
+      const rankedResults = this.hybridRanker.rankWithHits(
+        results,
+        queryTokens,
+        queryEmbedding,
+        options.hybrid
       )
 
       // Sort by score descending, then by document order for ties
