@@ -81,7 +81,6 @@ export function dedupeAndMerge(contexts: ExpandedContext[]): MergedContext[] {
 function unionParagraphIds(arrays: string[][]): string[] {
   // Collect all IDs with their first occurrence order
   const seen = new Set<string>()
-  const result: string[] = []
 
   // Process arrays in order to maintain document order
   // For overlapping spans, we want to preserve the natural flow
