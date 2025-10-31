@@ -61,7 +61,10 @@ test('Single word search finds matches', () => {
     throw new Error('Expected results for "section"')
   }
   // Should find spans with "section" (including "## Section Two", "## Section Three")
-  const found = results.some(s => s.text.toLowerCase().includes('section'))
+  const found = results.some(r => {
+    const span = reader.getSpan(r.id)
+    return span && span.text.toLowerCase().includes('section')
+  })
   if (!found) {
     throw new Error('Results should contain "section"')
   }
@@ -93,7 +96,9 @@ test('Multi-word search uses AND logic', () => {
   }
 
   // All results should contain both "section" and "two"
-  for (const span of results) {
+  for (const result of results) {
+    const span = reader.getSpan(result.id)
+    if (!span) throw new Error(`Span ${result.id} not found`)
     const text = span.text.toLowerCase()
     if (!text.includes('section') || !text.includes('two')) {
       throw new Error(`Span should contain both "section" and "two": ${span.text}`)
@@ -105,7 +110,10 @@ test('Multi-word search uses AND logic', () => {
 test('Markdown syntax stripped from tokens', () => {
   // "## Section Two" should match "section"
   const results = reader.search('section')
-  const found = results.some(s => s.text.startsWith('##'))
+  const found = results.some(r => {
+    const span = reader.getSpan(r.id)
+    return span && span.text.startsWith('##')
+  })
   if (!found) {
     throw new Error('Should find "## Section Two" when searching "section"')
   }
@@ -117,7 +125,10 @@ test('Bold markdown stripped from tokens', () => {
   if (results.length === 0) {
     throw new Error('Expected results for "bold"')
   }
-  const found = results.some(s => s.text.includes('**bold**'))
+  const found = results.some(r => {
+    const span = reader.getSpan(r.id)
+    return span && span.text.includes('**bold**')
+  })
   if (!found) {
     throw new Error('Should find "**bold**" when searching "bold"')
   }
@@ -191,7 +202,10 @@ test('Punctuation stripped from tokens', () => {
   if (results.length === 0) {
     throw new Error('Expected results for "here"')
   }
-  const found = results.some(s => s.text.toLowerCase().includes("here's"))
+  const found = results.some(r => {
+    const span = reader.getSpan(r.id)
+    return span && span.text.toLowerCase().includes("here's")
+  })
   if (!found) {
     throw new Error('Should find "Here\'s" when searching "here"')
   }

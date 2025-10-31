@@ -199,7 +199,9 @@ test('Multi-word query with ranking', () => {
 
   // Should work (AND logic still applies)
   // All results should contain both terms
-  for (const span of results) {
+  for (const result of results) {
+    const span = reader.getSpan(result.id)
+    if (!span) throw new Error(`Span ${result.id} not found`)
     const text = span.text.toLowerCase()
     if (!text.includes('section') || !text.includes('two')) {
       throw new Error('Multi-word query should require all terms')
