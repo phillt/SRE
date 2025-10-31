@@ -169,10 +169,14 @@ export class TFIDFRanker {
   }
 
   /**
-   * Rank search results with phrase boosting.
+   * Rank search results with phrase boosting and fuzzy penalty.
    *
-   * Computes TF-IDF scores and adds a small boost for phrase matches.
-   * Phrase boost: +0.1 per distinct phrase (capped at +0.3).
+   * Computes TF-IDF scores and applies adjustments:
+   * - Phrase boost: +0.1 per distinct phrase (capped at +0.3)
+   * - Fuzzy penalty: ×0.95 for fuzzy-only hits (all tokens matched via fuzzy)
+   *
+   * Fuzzy-only hits are those where all token matches have the fuzzy flag set.
+   * Mixed hits (some exact, some fuzzy) and exact-only hits get full score.
    *
    * @param results - Search results with hit annotations
    * @param queryTokens - Pre-tokenized query terms
@@ -226,6 +230,20 @@ export class TFIDFRanker {
       const phraseCount = result.hits.phrases.length
       const boost = Math.min(0.3, phraseCount * phraseBoost)
       score += boost
+
+      // Apply fuzzy penalty if all token hits are fuzzy-only
+      // (no exact matches, only fuzzy matches)
+      const hasFuzzyTokens = result.hits.tokens.some(
+        (hit) => hit.fuzzy === true
+      )
+      const hasExactTokens = result.hits.tokens.some(
+        (hit) => hit.fuzzy !== true
+      )
+      const isFuzzyOnly = hasFuzzyTokens && !hasExactTokens
+
+      if (isFuzzyOnly) {
+        score *= 0.95 // 5% penalty for fuzzy-only hits
+      }
 
       scored.push({
         ...result,

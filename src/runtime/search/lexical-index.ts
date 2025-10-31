@@ -5,6 +5,26 @@ import {
   findPhraseMatches,
   containsAllPhrases,
 } from './phrase-search.js'
+import { findFuzzyCandidates } from './fuzzy-match.js'
+
+/**
+ * Options for fuzzy token matching.
+ *
+ * Fuzzy matching applies Levenshtein edit distance 1 to rare query tokens
+ * to improve recall for typos and misspellings.
+ */
+export interface FuzzyOptions {
+  /** Enable fuzzy matching (default: false) */
+  enabled?: boolean
+  /** Maximum edit distance (only 0 or 1 supported, default: 1) */
+  maxEdits?: number
+  /** Only apply fuzzy to tokens with df below this threshold (default: 5) */
+  dfThreshold?: number
+  /** Minimum token length to consider for fuzzy matching (default: 4) */
+  minTokenLen?: number
+  /** Maximum fuzzy candidates per token (default: 50) */
+  maxCandidatesPerToken?: number
+}
 
 /**
  * Tokenize text into searchable tokens.
@@ -64,6 +84,91 @@ export class LexicalIndex {
   }
 
   /**
+   * Check if a token is eligible for fuzzy matching.
+   *
+   * Eligibility criteria:
+   * - Token length >= minTokenLen
+   * - Document frequency < dfThreshold
+   *
+   * @param token - Token to check
+   * @param fuzzyOptions - Fuzzy matching options
+   * @returns True if token should use fuzzy matching
+   */
+  private isFuzzyEligible(token: string, fuzzyOptions: FuzzyOptions): boolean {
+    const { minTokenLen = 4, dfThreshold = 5, maxEdits = 1 } = fuzzyOptions
+
+    // Only support maxEdits = 1 in v0
+    if (maxEdits !== 1) {
+      return false
+    }
+
+    // Check length requirement
+    if (token.length < minTokenLen) {
+      return false
+    }
+
+    // Check document frequency requirement
+    const df = this.getDocumentFrequency(token)
+    if (df >= dfThreshold) {
+      return false
+    }
+
+    return true
+  }
+
+  /**
+   * Get all vocabulary tokens from the index.
+   *
+   * @returns Set of all tokens in the corpus
+   */
+  private getVocabulary(): Set<string> {
+    return new Set(this.index.keys())
+  }
+
+  /**
+   * Get postings (span IDs) for a token with optional fuzzy expansion.
+   *
+   * If fuzzy is enabled and token is eligible, unions exact postings
+   * with postings from fuzzy candidate tokens.
+   *
+   * @param token - Query token
+   * @param fuzzyOptions - Fuzzy matching options (optional)
+   * @returns Object with span IDs, fuzzy candidates used, and whether fuzzy added spans
+   */
+  private getPostingsWithFuzzy(
+    token: string,
+    fuzzyOptions?: FuzzyOptions
+  ): { spanIds: Set<string>; fuzzyCandidates: string[] } {
+    // Start with exact match postings
+    const exactPostings = this.index.get(token) || new Set<string>()
+    let spanIds = new Set(exactPostings)
+    let fuzzyCandidates: string[] = []
+
+    // Apply fuzzy expansion if enabled and eligible
+    if (fuzzyOptions?.enabled && this.isFuzzyEligible(token, fuzzyOptions)) {
+      const { maxCandidatesPerToken = 50 } = fuzzyOptions
+      const vocabulary = this.getVocabulary()
+      fuzzyCandidates = findFuzzyCandidates(
+        token,
+        vocabulary,
+        maxCandidatesPerToken
+      )
+
+      // Union fuzzy candidate postings
+      for (const candidate of fuzzyCandidates) {
+        const candidatePostings = this.index.get(candidate)
+        if (candidatePostings) {
+          for (const spanId of candidatePostings) {
+            spanIds.add(spanId)
+          }
+        }
+      }
+    }
+
+    return { spanIds, fuzzyCandidates }
+  }
+
+  /**
    * Search for spans matching query.
    *
    * Uses exact token matching (case-insensitive).
@@ -109,14 +214,24 @@ export class LexicalIndex {
    * Uses AND logic for both tokens and phrases (all must match).
    *
    * Returns results with hit annotations including:
-   * - Token hits: which query tokens matched
+   * - Token hits: which query tokens matched (with fuzzy flag if applicable)
    * - Phrase hits: which phrases matched with character offsets
+   *
+   * Fuzzy matching (if enabled):
+   * - Applies only to tokens (phrases always use exact match)
+   * - Only eligible tokens (rare + long enough) get fuzzy expansion
+   * - Token hits marked with fuzzy: true if matched via fuzzy candidate
    *
    * @param query - Search query (supports "quoted phrases" and tokens)
    * @param limit - Maximum number of results (optional)
+   * @param fuzzyOptions - Fuzzy matching options (optional)
    * @returns Array of search results with hit annotations
    */
-  searchWithHits(query: string, limit?: number): SearchResult[] {
+  searchWithHits(
+    query: string,
+    limit?: number,
+    fuzzyOptions?: FuzzyOptions
+  ): SearchResult[] {
     // Parse query into phrases and tokens
     const parsed = parseQuery(query)
 
@@ -125,12 +240,31 @@ export class LexicalIndex {
       return []
     }
 
-    // Get candidate spans using token-based search
+    // Get candidate spans using token-based search with optional fuzzy expansion
     let candidateIds: string[]
+    // Track fuzzy candidates for each token (for marking hits later)
+    const tokenFuzzyCandidates = new Map<string, string[]>()
 
     if (parsed.tokens.length > 0) {
-      // Use existing token logic to get candidates
-      candidateIds = this.search(parsed.tokens.join(' '))
+      // Get postings for each token (with fuzzy expansion if enabled)
+      const tokenPostings = parsed.tokens.map((token) => {
+        const { spanIds, fuzzyCandidates } = this.getPostingsWithFuzzy(
+          token,
+          fuzzyOptions
+        )
+        tokenFuzzyCandidates.set(token, fuzzyCandidates)
+        return spanIds
+      })
+
+      // Intersect sets (AND logic for multi-word queries)
+      let matchingSpans = new Set(tokenPostings[0])
+      for (let i = 1; i < tokenPostings.length; i++) {
+        matchingSpans = new Set(
+          [...matchingSpans].filter((id) => tokenPostings[i].has(id))
+        )
+      }
+
+      candidateIds = Array.from(matchingSpans)
     } else {
       // No tokens, but we have phrases - need to check all spans
       // Use a cheap prefilter: get spans containing first word of first phrase
@@ -163,11 +297,35 @@ export class LexicalIndex {
         }
       }
 
-      // Collect token hits (only tokens that actually exist in span)
+      // Collect token hits (only tokens that actually match in span)
       const spanTokens = new Set(tokenize(span.text))
       const tokenHits = parsed.tokens
-        .filter((term) => spanTokens.has(term))
-        .map((term) => ({ term }))
+        .filter((term) => {
+          // Include if exact match
+          if (spanTokens.has(term)) return true
+          // Include if any fuzzy candidate matches
+          const fuzzyCandidates = tokenFuzzyCandidates.get(term)
+          if (fuzzyCandidates && fuzzyCandidates.length > 0) {
+            return fuzzyCandidates.some((candidate) =>
+              spanTokens.has(candidate)
+            )
+          }
+          return false
+        })
+        .map((term) => {
+          // Mark as fuzzy if token doesn't exist exactly but fuzzy candidate does
+          const exactMatch = spanTokens.has(term)
+          let usedFuzzy = false
+          if (!exactMatch) {
+            const fuzzyCandidates = tokenFuzzyCandidates.get(term)
+            if (fuzzyCandidates && fuzzyCandidates.length > 0) {
+              usedFuzzy = fuzzyCandidates.some((candidate) =>
+                spanTokens.has(candidate)
+              )
+            }
+          }
+          return usedFuzzy ? { term, fuzzy: true } : { term }
+        })
 
       // Collect phrase hits with ranges
       const phraseHits = parsed.phrases.map((phrase) => ({
