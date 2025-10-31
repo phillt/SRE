@@ -1,15 +1,20 @@
-# TF-IDF Ranking Demo
+# Ranking Demo (TF-IDF + Hybrid)
 
-Relevance ranking for search results using TF-IDF scoring.
+Relevance ranking for search results using TF-IDF and hybrid (lexical + semantic) scoring.
 
 ## Overview
 
-TF-IDF (Term Frequency × Inverse Document Frequency) ranks search results by relevance rather than document order. It scores spans based on term frequency, document frequency, and length normalization.
+SRE provides two ranking modes:
+
+1. **TF-IDF**: Lexical ranking based on Term Frequency × Inverse Document Frequency
+2. **Hybrid**: Combines TF-IDF (lexical precision) with semantic similarity (embedding cosine)
+
+Both modes rank search results by relevance rather than document order, with configurable options for different use cases.
 
 ## Files
 
-- **`demo.js`** - Interactive demonstration comparing ranked vs unranked search
-- **`verify.js`** - 12 comprehensive verification tests
+- **`demo.js`** - Interactive demonstration comparing ranking modes
+- **`verify.js`** - 22 comprehensive verification tests (12 TF-IDF + 10 hybrid)
 
 ## Running
 
@@ -27,13 +32,20 @@ Shows:
 - TF caching
 - How TF-IDF works
 - Common vs rare terms
+- **Hybrid ranking** (lexical + semantic)
+- **Custom hybrid weights**
+- **Hybrid + fuzzy matching**
 
 ### Verification Tests
 
 ```bash
-# Run all 12 tests
+# Run all 22 tests
 node demo/ranking/verify.js
 ```
+
+Tests cover:
+- TF-IDF ranking (12 tests)
+- Hybrid ranking (10 tests)
 
 ## API Features
 
@@ -46,7 +58,29 @@ const reader = await createReader('output')
 const unranked = reader.search('error')
 
 // Ranked by TF-IDF
-const ranked = reader.search('error', { rank: 'tfidf' })
+const tfidf = reader.search('error', { rank: 'tfidf' })
+
+// Hybrid ranking (lexical + semantic)
+const hybrid = reader.search('error', { rank: 'hybrid' })
+```
+
+### Hybrid with Custom Weights
+
+```javascript
+// Default: 70% lexical, 30% semantic
+const defaultHybrid = reader.search('verify phone', { rank: 'hybrid' })
+
+// Balanced: 50% lexical, 50% semantic
+const balanced = reader.search('verify phone', {
+  rank: 'hybrid',
+  hybrid: { weightLexical: 0.5, weightSemantic: 0.5 }
+})
+
+// Semantic-heavy: 30% lexical, 70% semantic (good for paraphrased queries)
+const semantic = reader.search('authentication method', {
+  rank: 'hybrid',
+  hybrid: { weightLexical: 0.3, weightSemantic: 0.7 }
+})
 ```
 
 ### With Limit
@@ -54,6 +88,19 @@ const ranked = reader.search('error', { rank: 'tfidf' })
 ```javascript
 // Get top 5 most relevant
 const top5 = reader.search('section', { rank: 'tfidf', limit: 5 })
+
+// Top 5 with hybrid ranking
+const hybridTop5 = reader.search('section', { rank: 'hybrid', limit: 5 })
+```
+
+### Hybrid + Fuzzy
+
+```javascript
+// Combine hybrid ranking with fuzzy matching for typos
+const fuzzyHybrid = reader.search('secton', {
+  rank: 'hybrid',
+  fuzzy: { enabled: true }
+})
 ```
 
 ### Enable TF Caching
@@ -62,7 +109,7 @@ const top5 = reader.search('section', { rank: 'tfidf', limit: 5 })
 // Enable optional LRU cache (100 TF vectors)
 reader.enableTfCache(100)
 
-// Now ranking queries use cache
+// Now ranking queries use cache (works for both tfidf and hybrid)
 const results = reader.search('query', { rank: 'tfidf' })
 ```
 
@@ -104,6 +151,49 @@ Query: **"error handling"**
 - Score = ((1.00 × 2.81) + (1.00 × 3.51)) / √20 = 1.41
 
 **Result:** Span B ranks higher (1.41 > 1.17) despite having fewer occurrences, because it's shorter and more focused.
+
+### Hybrid Ranking Formula
+
+Hybrid ranking fuses lexical (TF-IDF) and semantic (embedding cosine) signals:
+
+```
+hybrid_score = (tfidf_norm × w_lex) + (cosine_norm × w_sem)
+```
+
+**Components:**
+
+1. **Lexical Score (TF-IDF)**: Computed as above
+   - Measures term overlap and frequency
+   - Good for exact keyword matching
+
+2. **Semantic Score (Cosine)**: `cos(query_embedding, span_embedding)`
+   - Uses 128-d deterministic embeddings (hash-based projection)
+   - Measures semantic similarity
+   - Good for paraphrased or reworded queries
+
+3. **Normalization**: Both scores normalized to [0, 1] via min-max
+   - Ensures stable fusion across different score ranges
+   - Can be disabled with `normalize: false`
+
+4. **Weighted Fusion**: Default 70% lexical, 30% semantic
+   - Preserves precision while adding semantic recall
+   - Fully configurable via `weightLexical` and `weightSemantic`
+
+### Example: Hybrid vs TF-IDF
+
+Query: **"verify phone number"**
+
+**Span A: "Phone verification via SMS"**
+- TF-IDF: Moderate (only "phone" matches)
+- Semantic: High (same concept, different words)
+- **Hybrid: High** (semantic boosts relevance)
+
+**Span B: "Verify phone phone phone"**
+- TF-IDF: High (repeated term)
+- Semantic: Moderate (keyword stuffing)
+- **Hybrid: Moderate** (lexical precision prevents over-ranking)
+
+Hybrid ranking finds Span A more relevant, even though Span B has more keyword matches.
 
 ## Features
 
@@ -262,42 +352,58 @@ const results = reader.search(query, { rank: 'tfidf' })
 
 ## Comparison with Alternatives
 
-### vs Document Order
+### TF-IDF vs Document Order
 - ✅ Relevance-based ranking
 - ✅ More useful for large result sets
 - ❌ Slightly slower (< 2ms difference)
 
-### vs BM25
+### TF-IDF vs BM25
 - ✅ Simpler implementation
 - ✅ No hyperparameters
 - ❌ Less sophisticated (BM25 has term saturation)
 
-### vs Semantic Search
-- ✅ Fast, deterministic
-- ✅ No ML models needed
-- ❌ No understanding of meaning/synonyms
+### Hybrid vs Pure Semantic Search
+- ✅ Combines precision (lexical) + recall (semantic)
+- ✅ Configurable weights for different use cases
+- ✅ Fast, deterministic (no external API)
+- ✅ No ML training required
+- ❌ Simpler embeddings than full transformer models
+
+### Hybrid vs TF-IDF Only
+- ✅ Finds semantically similar results (paraphrases, synonyms)
+- ✅ Better for conversational queries
+- ✅ Maintains lexical precision with default weights
+- ❌ Slightly slower (~2ms additional cost)
 
 ## Future Extensions
 
 - **BM25**: More sophisticated ranking with term saturation
-- **Phrase boosting**: Higher scores for exact phrases
+- **External embeddings**: Support for transformer-based models (BERT, etc.)
 - **Field boosting**: Weight title/headings higher
 - **Recency bias**: Boost recent documents
 - **Custom scoring**: User-defined score functions
 - **Explain API**: Show how score was calculated
+- **Query expansion**: Automatic synonym/related term expansion
 
 ## When to Use
 
-**Use ranking when:**
+**Use TF-IDF when:**
+- Need precise keyword matching
+- Query has specific technical terms
+- Fast performance is priority
 - Result set is large (>10 spans)
-- Query is broad (matches many spans)
-- User wants "best" results first
-- Building search UI/API
+
+**Use Hybrid when:**
+- Users rephrase queries (conversational search)
+- Need both precision and semantic understanding
+- Queries use synonyms or related concepts
+- Building RAG/LLM-powered search
+- Want to handle paraphrased content
 
 **Skip ranking when:**
 - Result set is small (<5 spans)
 - Document order is meaningful (e.g., chronological)
-- Performance is critical (< 1ms difference though)
+- Only exact matches matter (use lexical search without ranking)
 
 ## Next Steps
 
