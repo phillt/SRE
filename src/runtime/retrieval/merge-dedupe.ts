@@ -23,9 +23,7 @@ export interface MergedContext {
  * @param contexts - Array of expanded contexts to merge
  * @returns Array of merged contexts (one per unique packId)
  */
-export function dedupeAndMerge(
-  contexts: ExpandedContext[]
-): MergedContext[] {
+export function dedupeAndMerge(contexts: ExpandedContext[]): MergedContext[] {
   // Group contexts by packId
   const grouped = new Map<string, ExpandedContext[]>()
 
