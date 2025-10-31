@@ -15,6 +15,7 @@ import { Span } from '../core/contracts/span.js'
 import { Manifest } from '../core/contracts/manifest.js'
 import { extractTitle } from '../utils/extract-title.js'
 import { getVersion } from '../utils/read-version.js'
+import { embedText } from '../core/embed/mini-embedder.js'
 
 /**
  * Result of the spanize pipeline
@@ -38,10 +39,11 @@ export interface SpanizeResult {
  * 1. Detect format and get appropriate reader
  * 2. Read and normalize text via reader + wrapper
  * 3. Split into paragraph spans (with heading paths for Markdown)
- * 4. Write spans to JSONL
- * 5. Generate and write manifest JSON
- * 6. Generate and write node map
- * 7. Generate and write build report
+ * 4. Generate embeddings for each span
+ * 5. Write spans to JSONL
+ * 6. Generate and write manifest JSON
+ * 7. Generate and write node map
+ * 8. Generate and write build report
  */
 export async function spanize(
   inputPath: string,
@@ -82,6 +84,16 @@ export async function spanize(
 
   if (options.verbose) {
     console.log(`Generated ${spans.length} span(s)`)
+    console.log('Generating embeddings...')
+  }
+
+  // Step 3.5: Generate embeddings for each span
+  for (const span of spans) {
+    span.embedding = embedText(span.text)
+  }
+
+  if (options.verbose) {
+    console.log(`Generated embeddings for ${spans.length} span(s)`)
     console.log('Writing to JSONL...')
   }
 
