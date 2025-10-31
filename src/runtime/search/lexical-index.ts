@@ -219,14 +219,24 @@ export class LexicalIndex {
    * Uses AND logic for both tokens and phrases (all must match).
    *
    * Returns results with hit annotations including:
-   * - Token hits: which query tokens matched
+   * - Token hits: which query tokens matched (with fuzzy flag if applicable)
    * - Phrase hits: which phrases matched with character offsets
+   *
+   * Fuzzy matching (if enabled):
+   * - Applies only to tokens (phrases always use exact match)
+   * - Only eligible tokens (rare + long enough) get fuzzy expansion
+   * - Token hits marked with fuzzy: true if matched via fuzzy candidate
    *
    * @param query - Search query (supports "quoted phrases" and tokens)
    * @param limit - Maximum number of results (optional)
+   * @param fuzzyOptions - Fuzzy matching options (optional)
    * @returns Array of search results with hit annotations
    */
-  searchWithHits(query: string, limit?: number): SearchResult[] {
+  searchWithHits(
+    query: string,
+    limit?: number,
+    fuzzyOptions?: FuzzyOptions
+  ): SearchResult[] {
     // Parse query into phrases and tokens
     const parsed = parseQuery(query)
 

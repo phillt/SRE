@@ -5,6 +5,7 @@ import { z } from 'zod'
  */
 export const TokenHitSchema = z.object({
   term: z.string(),
+  fuzzy: z.boolean().optional(),
 })
 
 export type TokenHit = z.infer<typeof TokenHitSchema>

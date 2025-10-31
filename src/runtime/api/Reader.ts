@@ -4,7 +4,11 @@ import { NodeMap, SectionNode } from '../../core/contracts/node-map.js'
 import { BuildReport } from '../../core/contracts/report.js'
 import { SearchResult } from '../../core/contracts/search-hit.js'
 import { LoadedArtifacts } from '../loader/load-artifacts.js'
-import { LexicalIndex, tokenize } from '../search/lexical-index.js'
+import {
+  LexicalIndex,
+  tokenize,
+  FuzzyOptions,
+} from '../search/lexical-index.js'
 import { TFIDFRanker } from '../search/rank-tfidf.js'
 import {
   RetrievalOptions,
@@ -34,6 +38,7 @@ export interface NeighborsOptions {
 export interface SearchOptions {
   limit?: number
   rank?: 'none' | 'tfidf'
+  fuzzy?: FuzzyOptions
 }
 
 /**
@@ -255,21 +260,27 @@ export class Reader {
    * - Exact token matching (case-insensitive, punctuation-stripped)
    * - Quoted phrase matching (e.g., "error handling")
    * - Mixed queries (tokens + phrases)
+   * - Optional fuzzy matching for typo tolerance (edit distance 1)
    *
    * Uses AND logic for all terms (tokens and phrases must all match).
    *
    * The search index is built lazily on first search() call.
    *
    * Results include hit annotations:
-   * - Token hits: which query tokens matched
+   * - Token hits: which query tokens matched (with fuzzy flag if applicable)
    * - Phrase hits: which phrases matched with character offsets
+   *
+   * Fuzzy matching (if enabled):
+   * - Applies only to rare tokens (df < threshold) that are long enough
+   * - Phrases always use exact match
+   * - Fuzzy-only hits receive a small ranking penalty
    *
    * Results can be optionally ranked by TF-IDF relevance with phrase boosting.
    * Without ranking, results are returned in document order (by meta.order).
    * With ranking, results are sorted by relevance score (descending), with ties broken by document order.
    *
    * @param query - Search query (supports "quoted phrases" and tokens)
-   * @param options - Search options (limit, rank)
+   * @param options - Search options (limit, rank, fuzzy)
    * @returns Array of search results with hit annotations
    */
   search(query: string, options?: SearchOptions): SearchResult[] {
@@ -287,7 +298,11 @@ export class Reader {
     const limitAtSearch = options?.rank === 'tfidf' ? undefined : options?.limit
 
     // Get matching results with hit annotations
-    let results = this.searchIndex.searchWithHits(query, limitAtSearch)
+    let results = this.searchIndex.searchWithHits(
+      query,
+      limitAtSearch,
+      options?.fuzzy
+    )
 
     // Apply ranking if requested
     if (options?.rank === 'tfidf' && this.tfidfRanker) {
