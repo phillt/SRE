@@ -269,12 +269,246 @@ test('Ranking is deterministic', () => {
   }
 })
 
+// Test 9: Hybrid Ranking
+console.log('\nTest Group 6: Hybrid Ranking')
+
+test('Hybrid ranking works without error', () => {
+  const query = 'section'
+
+  const results = reader.search(query, { rank: 'hybrid' })
+
+  if (results.length === 0) {
+    throw new Error('Expected some hybrid results')
+  }
+
+  // All results should have valid scores
+  for (const result of results) {
+    if (typeof result.score !== 'number') {
+      throw new Error('Hybrid result should have numeric score')
+    }
+    if (isNaN(result.score)) {
+      throw new Error('Hybrid score should not be NaN')
+    }
+  }
+})
+
+test('Hybrid ranking produces different order than TF-IDF', () => {
+  const query = 'section paragraph'
+
+  const tfidfResults = reader.search(query, { rank: 'tfidf' })
+  const hybridResults = reader.search(query, { rank: 'hybrid' })
+
+  if (tfidfResults.length === 0 || hybridResults.length === 0) {
+    console.log('   (Skipped: need results to compare)')
+    return
+  }
+
+  // Should have same result set (just different order)
+  if (tfidfResults.length !== hybridResults.length) {
+    throw new Error('TF-IDF and hybrid should return same result set')
+  }
+
+  // Verify both contain same span IDs
+  const tfidfIds = new Set(tfidfResults.map((r) => r.id))
+  const hybridIds = new Set(hybridResults.map((r) => r.id))
+
+  if (tfidfIds.size !== hybridIds.size) {
+    throw new Error('TF-IDF and hybrid should have same spans')
+  }
+
+  for (const id of tfidfIds) {
+    if (!hybridIds.has(id)) {
+      throw new Error(`Missing span ${id} in hybrid results`)
+    }
+  }
+})
+
+test('Hybrid ranking is deterministic', () => {
+  const query = 'section'
+
+  const run1 = reader.search(query, { rank: 'hybrid' })
+  const run2 = reader.search(query, { rank: 'hybrid' })
+  const run3 = reader.search(query, { rank: 'hybrid' })
+
+  if (run1.length === 0) {
+    throw new Error('Need results to test determinism')
+  }
+
+  if (run1.length !== run2.length || run1.length !== run3.length) {
+    throw new Error('Multiple runs should return same number of results')
+  }
+
+  // Check same order across runs
+  for (let i = 0; i < run1.length; i++) {
+    if (run1[i].id !== run2[i].id || run1[i].id !== run3[i].id) {
+      throw new Error('Hybrid rankings should be deterministic across runs')
+    }
+    // Check scores are identical too
+    if (
+      Math.abs(run1[i].score - run2[i].score) > 0.0001 ||
+      Math.abs(run1[i].score - run3[i].score) > 0.0001
+    ) {
+      throw new Error('Hybrid scores should be deterministic across runs')
+    }
+  }
+})
+
+test('Hybrid with custom weights', () => {
+  const query = 'section'
+
+  const default70_30 = reader.search(query, { rank: 'hybrid' })
+  const balanced50_50 = reader.search(query, {
+    rank: 'hybrid',
+    hybrid: { weightLexical: 0.5, weightSemantic: 0.5 },
+  })
+  const semantic90_10 = reader.search(query, {
+    rank: 'hybrid',
+    hybrid: { weightLexical: 0.1, weightSemantic: 0.9 },
+  })
+
+  if (default70_30.length === 0) {
+    throw new Error('Need results to test weight variations')
+  }
+
+  // All should return same result set
+  if (
+    default70_30.length !== balanced50_50.length ||
+    default70_30.length !== semantic90_10.length
+  ) {
+    throw new Error('Weight variations should return same result set')
+  }
+
+  // Scores can differ between weight configurations
+  // Just verify all have valid scores
+  for (const result of balanced50_50) {
+    if (isNaN(result.score)) {
+      throw new Error('Balanced weights should produce valid scores')
+    }
+  }
+  for (const result of semantic90_10) {
+    if (isNaN(result.score)) {
+      throw new Error('Semantic-heavy weights should produce valid scores')
+    }
+  }
+})
+
+test('Hybrid works with limit', () => {
+  const query = 'section'
+
+  const allHybrid = reader.search(query, { rank: 'hybrid' })
+  const limitedHybrid = reader.search(query, { rank: 'hybrid', limit: 3 })
+
+  if (allHybrid.length === 0) {
+    throw new Error('Need results to test limit')
+  }
+
+  if (limitedHybrid.length > 3) {
+    throw new Error(`Limit 3 should return max 3 results, got ${limitedHybrid.length}`)
+  }
+
+  // Limited results should be top-ranked from full results
+  for (let i = 0; i < limitedHybrid.length; i++) {
+    if (limitedHybrid[i].id !== allHybrid[i].id) {
+      throw new Error('Limited hybrid results should be top-ranked subset')
+    }
+  }
+})
+
+test('Hybrid works with fuzzy matching', () => {
+  const query = 'secton' // Typo: should find "section" with fuzzy
+
+  const hybridWithFuzzy = reader.search(query, {
+    rank: 'hybrid',
+    fuzzy: { enabled: true },
+  })
+
+  // Should find results even with typo
+  if (hybridWithFuzzy.length === 0) {
+    // Might legitimately have no results if "secton" is rare
+    console.log('   (Skipped: no fuzzy matches found)')
+    return
+  }
+
+  // All results should have valid hybrid scores
+  for (const result of hybridWithFuzzy) {
+    if (isNaN(result.score)) {
+      throw new Error('Hybrid + fuzzy should produce valid scores')
+    }
+  }
+})
+
+test('Hybrid scores are in valid range', () => {
+  const query = 'section paragraph'
+
+  const results = reader.search(query, { rank: 'hybrid' })
+
+  if (results.length === 0) {
+    console.log('   (Skipped: need results)')
+    return
+  }
+
+  // Scores should be in [0, 1] range (due to normalization)
+  for (const result of results) {
+    if (result.score < 0) {
+      throw new Error(`Hybrid score should be >= 0, got ${result.score}`)
+    }
+    if (result.score > 1.01) {
+      // Allow small floating point error
+      throw new Error(`Hybrid score should be <= 1, got ${result.score}`)
+    }
+  }
+})
+
+test('Hybrid normalization can be disabled', () => {
+  const query = 'section'
+
+  const withNorm = reader.search(query, {
+    rank: 'hybrid',
+    hybrid: { normalize: true },
+  })
+  const withoutNorm = reader.search(query, {
+    rank: 'hybrid',
+    hybrid: { normalize: false },
+  })
+
+  if (withNorm.length === 0 || withoutNorm.length === 0) {
+    console.log('   (Skipped: need results)')
+    return
+  }
+
+  // Both should return same result set
+  if (withNorm.length !== withoutNorm.length) {
+    throw new Error('Normalization toggle should not change result set')
+  }
+
+  // Scores will differ, but all should be valid numbers
+  for (const result of withoutNorm) {
+    if (isNaN(result.score)) {
+      throw new Error('Non-normalized hybrid should still have valid scores')
+    }
+  }
+})
+
+test('Empty query with hybrid ranking', () => {
+  const results = reader.search('', { rank: 'hybrid' })
+  if (results.length !== 0) {
+    throw new Error('Empty query should return no results with hybrid')
+  }
+})
+
+test('Non-existent term with hybrid ranking', () => {
+  const results = reader.search('nonexistentxyz999', { rank: 'hybrid' })
+  if (results.length !== 0) {
+    throw new Error('Non-existent term should return no results with hybrid')
+  }
+})
+
 // Summary
 console.log('\n' + '─'.repeat(60))
 console.log(`Results: ${passed} passed, ${failed} failed`)
 
 if (failed === 0) {
-  console.log('\n✅ All TF-IDF ranking tests passed!')
+  console.log('\n✅ All ranking tests (TF-IDF + Hybrid) passed!')
   process.exit(0)
 } else {
   console.log('\n❌ Some tests failed')

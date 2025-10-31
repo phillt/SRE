@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Demo script showing TF-IDF relevance ranking functionality
+ * Demo script showing TF-IDF and Hybrid ranking functionality
  */
 
 import { createReader } from '../../dist/runtime/api/index.js'
 
 async function demo() {
-  console.log('🎯 SRE TF-IDF Ranking Demo\n')
+  console.log('🎯 SRE Ranking Demo (TF-IDF + Hybrid)\n')
 
   // Load artifacts
   console.log('Loading artifacts from dist/final-test...')
@@ -163,6 +163,99 @@ async function demo() {
   console.log('Rare terms get higher IDF weights, making them more important.')
   console.log()
 
+  // Example 7: Hybrid Ranking
+  console.log('─'.repeat(60))
+  console.log('Example 7: Hybrid Ranking (Lexical + Semantic)')
+  console.log('─'.repeat(60))
+
+  console.log('Hybrid ranking fuses TF-IDF (lexical) with semantic similarity\n')
+
+  const hybridQuery = 'section paragraph'
+  console.log(`Query: "${hybridQuery}"\n`)
+
+  // TF-IDF only
+  const tfidfOnly = reader.search(hybridQuery, { rank: 'tfidf', limit: 3 })
+  console.log('TF-IDF ranking:')
+  for (let i = 0; i < tfidfOnly.length; i++) {
+    const span = tfidfOnly[i]
+    const preview = span.text.length > 40 ? span.text.substring(0, 40) + '...' : span.text
+    console.log(`  ${i + 1}. ${span.id} (score: ${span.score.toFixed(4)})`)
+    console.log(`     "${preview}"`)
+  }
+  console.log()
+
+  // Hybrid ranking (default: 70% lexical, 30% semantic)
+  const hybridDefault = reader.search(hybridQuery, { rank: 'hybrid', limit: 3 })
+  console.log('Hybrid ranking (70% lexical, 30% semantic):')
+  for (let i = 0; i < hybridDefault.length; i++) {
+    const span = hybridDefault[i]
+    const preview = span.text.length > 40 ? span.text.substring(0, 40) + '...' : span.text
+    console.log(`  ${i + 1}. ${span.id} (score: ${span.score.toFixed(4)})`)
+    console.log(`     "${preview}"`)
+  }
+  console.log()
+
+  // Example 8: Custom Hybrid Weights
+  console.log('─'.repeat(60))
+  console.log('Example 8: Custom Hybrid Weights')
+  console.log('─'.repeat(60))
+
+  const weightsQuery = 'section'
+  console.log(`Query: "${weightsQuery}"\n`)
+
+  // Balanced weights (50/50)
+  const balanced = reader.search(weightsQuery, {
+    rank: 'hybrid',
+    hybrid: { weightLexical: 0.5, weightSemantic: 0.5 },
+    limit: 3,
+  })
+  console.log('Balanced (50% lexical, 50% semantic):')
+  for (let i = 0; i < balanced.length; i++) {
+    const span = balanced[i]
+    console.log(`  ${i + 1}. ${span.id} (score: ${span.score.toFixed(4)})`)
+  }
+  console.log()
+
+  // Semantic-heavy weights (10/90)
+  const semanticHeavy = reader.search(weightsQuery, {
+    rank: 'hybrid',
+    hybrid: { weightLexical: 0.1, weightSemantic: 0.9 },
+    limit: 3,
+  })
+  console.log('Semantic-heavy (10% lexical, 90% semantic):')
+  for (let i = 0; i < semanticHeavy.length; i++) {
+    const span = semanticHeavy[i]
+    console.log(`  ${i + 1}. ${span.id} (score: ${span.score.toFixed(4)})`)
+  }
+  console.log()
+
+  // Example 9: Hybrid with Fuzzy
+  console.log('─'.repeat(60))
+  console.log('Example 9: Hybrid + Fuzzy Matching')
+  console.log('─'.repeat(60))
+
+  const fuzzyQuery = 'secton' // Typo: should find "section"
+  console.log(`Query with typo: "${fuzzyQuery}"\n`)
+
+  // Hybrid without fuzzy
+  const hybridNoFuzzy = reader.search(fuzzyQuery, { rank: 'hybrid' })
+  console.log(`Hybrid without fuzzy: ${hybridNoFuzzy.length} results\n`)
+
+  // Hybrid with fuzzy
+  const hybridWithFuzzy = reader.search(fuzzyQuery, {
+    rank: 'hybrid',
+    fuzzy: { enabled: true },
+    limit: 3,
+  })
+  console.log(`Hybrid with fuzzy: ${hybridWithFuzzy.length} results`)
+  for (let i = 0; i < Math.min(3, hybridWithFuzzy.length); i++) {
+    const span = hybridWithFuzzy[i]
+    const preview = span.text.length > 40 ? span.text.substring(0, 40) + '...' : span.text
+    console.log(`  ${i + 1}. ${span.id} (score: ${span.score.toFixed(4)})`)
+    console.log(`     "${preview}"`)
+  }
+  console.log()
+
   console.log('✨ Demo complete!')
   console.log()
   console.log('Key Takeaways:')
@@ -171,6 +264,9 @@ async function demo() {
   console.log('  • Rare terms (low DF) boost score')
   console.log('  • Length normalization prevents bias toward long docs')
   console.log('  • Optional LRU cache speeds up repeated queries')
+  console.log('  • Hybrid ranking combines lexical precision with semantic recall')
+  console.log('  • Custom weights let you tune the lexical/semantic balance')
+  console.log('  • Hybrid works seamlessly with fuzzy matching')
 }
 
 demo().catch((error) => {

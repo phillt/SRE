@@ -19,8 +19,10 @@ SRE is a modular TypeScript pipeline that transforms text-based documents into s
 - ✂️ **Span Segmentation** - Split documents into paragraph spans with metadata
 - 🏗️ **Structural Hints** - Track hierarchical structure (chapters, sections, headings)
 - 📖 **Runtime Reader API** - Efficient read-only access to artifacts with O(1) lookups
-- 🔍 **Lexical Search** - Fast, case-insensitive token matching with AND queries
-- 🎯 **TF-IDF Ranking** - Relevance scoring with length normalization
+- 🔍 **Lexical Search** - Fast, case-insensitive token matching with AND queries and phrase support
+- 🎯 **TF-IDF Ranking** - Relevance scoring with length normalization and phrase boosting
+- 🧠 **Hybrid Ranking** - Fuses lexical (TF-IDF) and semantic (embedding cosine) signals
+- 🔤 **Fuzzy Matching** - Typo-tolerant search with edit distance for rare terms
 - ⚡ **Zero Runtime Dependencies** - Lightweight reader with no external deps
 - 🛠️ **CLI Tools** - Build pipeline and search utilities
 - 🔬 **Deterministic** - Identical input produces identical output
@@ -127,6 +129,9 @@ sre-search output/ "your query"
 # With TF-IDF ranking
 sre-search output/ "error handling" --rank=tfidf
 
+# With hybrid ranking (lexical + semantic)
+sre-search output/ "error handling" --rank=hybrid
+
 # Limit results
 sre-search output/ "section" --rank=tfidf --limit=5
 ```
@@ -146,8 +151,11 @@ console.log(`${manifest.title}: ${manifest.spanCount} spans`)
 // Search
 const results = reader.search('error handling')
 
-// Search with ranking
+// Search with TF-IDF ranking
 const ranked = reader.search('error handling', { rank: 'tfidf' })
+
+// Search with hybrid ranking (lexical + semantic)
+const hybrid = reader.search('error handling', { rank: 'hybrid' })
 
 // Get span by ID
 const span = reader.getSpan('span:000001')
@@ -190,18 +198,19 @@ sre book.md -o book-output/ -v
 
 ### `sre-search` - Search with ranking
 
-Query span artifacts with optional TF-IDF ranking.
+Query span artifacts with optional ranking modes.
 
 ```bash
 sre-search <output-dir> <query> [options]
 
 Options:
-  --limit=N       Limit results to N spans
-  --rank=tfidf    Enable TF-IDF relevance ranking
+  --limit=N               Limit results to N spans
+  --rank=tfidf|hybrid     Enable ranking (tfidf or hybrid)
 
 Examples:
   sre-search dist/ "error handling"
   sre-search dist/ "section" --rank=tfidf --limit=5
+  sre-search dist/ "verify number" --rank=hybrid
 ```
 
 ## API Documentation
@@ -239,8 +248,14 @@ reader.enableTfCache(size?: number): void
 
 ```typescript
 interface SearchOptions {
-  limit?: number          // Maximum results
-  rank?: 'none' | 'tfidf' // Ranking method (default: 'none')
+  limit?: number                     // Maximum results
+  rank?: 'none' | 'tfidf' | 'hybrid' // Ranking method (default: 'none')
+  fuzzy?: FuzzyOptions               // Fuzzy matching for typos
+  hybrid?: {
+    weightLexical?: number           // Lexical weight (default: 0.7)
+    weightSemantic?: number          // Semantic weight (default: 0.3)
+    normalize?: boolean              // Min-max normalization (default: true)
+  }
 }
 ```
 
@@ -252,8 +267,29 @@ const results = reader.search('error')
 // Ranked by TF-IDF
 const ranked = reader.search('error', { rank: 'tfidf' })
 
+// Hybrid ranking (lexical + semantic)
+const hybrid = reader.search('verify phone', { rank: 'hybrid' })
+
+// Custom hybrid weights (balanced)
+const balanced = reader.search('query', {
+  rank: 'hybrid',
+  hybrid: { weightLexical: 0.5, weightSemantic: 0.5 }
+})
+
+// Semantic-heavy for paraphrased queries
+const semantic = reader.search('authentication method', {
+  rank: 'hybrid',
+  hybrid: { weightLexical: 0.3, weightSemantic: 0.7 }
+})
+
 // Top 10 most relevant
 const top10 = reader.search('query', { rank: 'tfidf', limit: 10 })
+
+// Fuzzy matching with hybrid ranking
+const fuzzyHybrid = reader.search('secton', {
+  rank: 'hybrid',
+  fuzzy: { enabled: true }
+})
 
 // Enable TF caching for better performance
 reader.enableTfCache(100)
@@ -269,13 +305,15 @@ The `demo/` directory contains interactive demonstrations and comprehensive test
 ```bash
 # Run interactive demos
 node demo/reader/demo.js      # Reader API demo
-node demo/search/demo.js      # Search demo
-node demo/ranking/demo.js     # TF-IDF ranking demo
+node demo/search/demo.js      # Search and fuzzy demo
+node demo/ranking/demo.js     # TF-IDF and hybrid ranking demo
+node demo/retrieval/demo.js   # Retrieval packs demo
 
-# Run verification tests
+# Run verification tests (111 total tests)
 node demo/reader/verify.js    # 26 tests
-node demo/search/verify.js    # 17 tests
-node demo/ranking/verify.js   # 12 tests
+node demo/search/verify.js    # 35 tests (includes fuzzy)
+node demo/ranking/verify.js   # 22 tests (TF-IDF + hybrid)
+node demo/retrieval/verify.js # 28 tests
 
 # Example CLI tool
 node demo/reader/example-cli.js output/ info
@@ -294,10 +332,11 @@ SRE/
 │   ├── adapters/     # I/O (readers, writers)
 │   └── utils/        # Shared utilities
 ├── bin/              # Production CLI tools
-├── demo/             # Interactive demos and tests
+├── demo/             # Interactive demos and tests (111 total)
 │   ├── reader/       # Reader API demos (26 tests)
-│   ├── search/       # Search demos (17 tests)
-│   ├── ranking/      # Ranking demos (12 tests)
+│   ├── search/       # Search and fuzzy demos (35 tests)
+│   ├── ranking/      # Ranking demos (22 tests: TF-IDF + hybrid)
+│   ├── retrieval/    # Retrieval packs demos (28 tests)
 │   └── format-tracking/  # Format detection tests
 ├── docs/             # Technical implementation docs
 └── dist/             # Compiled JavaScript (after build)
@@ -417,24 +456,30 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 ## Roadmap
 
-Potential future enhancements:
+Completed features:
+- [x] Phrase matching ("exact phrase" queries)
+- [x] Fuzzy matching for typos
+- [x] Semantic search with embeddings (hybrid ranking)
+- [x] Retrieval packs for LLM context
 
+Potential future enhancements:
 - [ ] BM25 ranking algorithm
-- [ ] Semantic search with embeddings
 - [ ] PDF and EPUB support
 - [ ] Boolean search operators (AND, OR, NOT)
-- [ ] Phrase matching ("exact phrase" queries)
-- [ ] Fuzzy matching for typos
 - [ ] Incremental updates to artifacts
 - [ ] HTTP API server
 - [ ] Web UI for exploration
+- [ ] External embedding model support
+- [ ] Cross-document search
 
 ## Performance
 
 - **Index Building**: < 10ms for 1,000 spans
+- **Embedding Generation**: < 1ms per span (build-time only)
 - **Lexical Search**: < 1ms for typical queries
 - **TF-IDF Ranking**: < 3ms for ranked queries
-- **Memory**: ~1KB per span in memory
+- **Hybrid Ranking**: < 5ms for ranked queries
+- **Memory**: ~1KB per span + 512 bytes per embedding in memory
 
 ## License
 

@@ -9,7 +9,7 @@ export const RetrievalOptionsSchema = z.object({
   perHitNeighbors: z.number().int().min(0).optional(),
   expand: z.enum(['neighbors', 'section']).optional(),
   maxTokens: z.number().int().positive().optional(),
-  rank: z.enum(['none', 'tfidf']).optional(),
+  rank: z.enum(['none', 'tfidf', 'hybrid']).optional(),
 })
 
 export type RetrievalOptions = z.infer<typeof RetrievalOptionsSchema>

@@ -11,6 +11,7 @@ export const SpanSchema = z.object({
     order: z.number().int().min(0),
     headingPath: z.array(z.string()),
   }),
+  embedding: z.array(z.number()).optional(),
 })
 
 export type Span = z.infer<typeof SpanSchema>
