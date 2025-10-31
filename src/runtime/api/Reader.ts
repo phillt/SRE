@@ -2,6 +2,7 @@ import { Manifest } from '../../core/contracts/manifest.js'
 import { Span } from '../../core/contracts/span.js'
 import { NodeMap, SectionNode } from '../../core/contracts/node-map.js'
 import { BuildReport } from '../../core/contracts/report.js'
+import { SearchResult } from '../../core/contracts/search-hit.js'
 import { LoadedArtifacts } from '../loader/load-artifacts.js'
 import { LexicalIndex, tokenize } from '../search/lexical-index.js'
 import { TFIDFRanker } from '../search/rank-tfidf.js'
@@ -248,22 +249,30 @@ export class Reader {
   }
 
   /**
-   * Search for spans containing query terms.
+   * Search for spans containing query terms and/or phrases.
    *
-   * Uses exact token matching (case-insensitive, punctuation-stripped).
-   * Multi-word queries use AND logic (all terms must match).
+   * Supports:
+   * - Exact token matching (case-insensitive, punctuation-stripped)
+   * - Quoted phrase matching (e.g., "error handling")
+   * - Mixed queries (tokens + phrases)
+   *
+   * Uses AND logic for all terms (tokens and phrases must all match).
    *
    * The search index is built lazily on first search() call.
    *
-   * Results can be optionally ranked by TF-IDF relevance.
+   * Results include hit annotations:
+   * - Token hits: which query tokens matched
+   * - Phrase hits: which phrases matched with character offsets
+   *
+   * Results can be optionally ranked by TF-IDF relevance with phrase boosting.
    * Without ranking, results are returned in document order (by meta.order).
    * With ranking, results are sorted by relevance score (descending), with ties broken by document order.
    *
-   * @param query - Search query (one or more words)
+   * @param query - Search query (supports "quoted phrases" and tokens)
    * @param options - Search options (limit, rank)
-   * @returns Array of matching spans
+   * @returns Array of search results with hit annotations
    */
-  search(query: string, options?: SearchOptions): Span[] {
+  search(query: string, options?: SearchOptions): SearchResult[] {
     // Build indexes lazily on first call
     if (!this.searchIndex) {
       this.searchIndex = new LexicalIndex(this.orderedSpans)
@@ -277,46 +286,39 @@ export class Reader {
     // Don't apply limit at search stage if ranking - need all results to rank properly
     const limitAtSearch = options?.rank === 'tfidf' ? undefined : options?.limit
 
-    // Get matching span IDs
-    const matchingIds = this.searchIndex.search(query, limitAtSearch)
-
-    // Convert to spans and filter out any undefined
-    let spans = matchingIds
-      .map((id) => this.spansById.get(id))
-      .filter((span): span is Span => span !== undefined)
+    // Get matching results with hit annotations
+    let results = this.searchIndex.searchWithHits(query, limitAtSearch)
 
     // Apply ranking if requested
     if (options?.rank === 'tfidf' && this.tfidfRanker) {
       const queryTokens = tokenize(query)
-      const scored = this.tfidfRanker.rank(matchingIds, queryTokens)
+      const rankedResults = this.tfidfRanker.rankWithHits(
+        results,
+        queryTokens,
+        0.1
+      )
 
       // Sort by score descending, then by document order for ties
-      scored.sort((a, b) => {
+      rankedResults.sort((a, b) => {
         if (b.score !== a.score) {
           return b.score - a.score
         }
         // Tie-breaker: document order
-        const spanA = this.spansById.get(a.id)
-        const spanB = this.spansById.get(b.id)
-        if (!spanA || !spanB) return 0
-        return spanA.meta.order - spanB.meta.order
+        return a.order - b.order
       })
 
-      // Convert back to spans (preserving ranked order)
-      spans = scored
-        .map(({ id }) => this.spansById.get(id))
-        .filter((span): span is Span => span !== undefined)
+      results = rankedResults
 
       // Apply limit after ranking
       if (options?.limit !== undefined) {
-        spans = spans.slice(0, options.limit)
+        results = results.slice(0, options.limit)
       }
     } else {
       // No ranking - sort by document order
-      spans.sort((a, b) => a.meta.order - b.meta.order)
+      results.sort((a, b) => a.order - b.order)
     }
 
-    return spans
+    return results
   }
 
   /**
@@ -344,37 +346,30 @@ export class Reader {
   }
 
   /**
-   * Search and return spans with relevance scores.
+   * Search and return spans with relevance scores and hit annotations.
    * Internal method used by retrieve().
    *
    * @param query - Search query
    * @param options - Search options
-   * @returns Array of scored spans
+   * @returns Array of scored spans with hit annotations
    */
   private searchWithScores(
     query: string,
     options?: SearchOptions
-  ): ScoredSpan[] {
-    // Reuse existing search logic but capture scores
-    const spans = this.search(query, options)
+  ): Array<{ result: SearchResult; span: Span }> {
+    // Get search results with hit annotations
+    const searchResults = this.search(query, options)
 
-    if (options?.rank === 'tfidf' && this.tfidfRanker) {
-      // Re-compute scores for these spans
-      const queryTokens = tokenize(query)
-      const spanIds = spans.map((s) => s.id)
-      const scored = this.tfidfRanker.rank(spanIds, queryTokens)
-
-      // Build score map
-      const scoreMap = new Map(scored.map((s) => [s.id, s.score]))
-
-      return spans.map((span) => ({
-        span,
-        score: scoreMap.get(span.id) || 0,
-      }))
-    }
-
-    // No ranking - score = 0
-    return spans.map((span) => ({ span, score: 0 }))
+    // Map results to spans
+    return searchResults
+      .map((result) => {
+        const span = this.spansById.get(result.id)
+        if (!span) return null
+        return { result, span }
+      })
+      .filter(
+        (item): item is { result: SearchResult; span: Span } => item !== null
+      )
   }
 
   /**
@@ -466,12 +461,13 @@ export class Reader {
     const paragraphsIndex = this.buildParagraphToSectionIndex()
 
     // Step 3: Expand each hit
-    const expandedContexts = searchResults.map(({ span, score }) => {
+    const expandedContexts = searchResults.map(({ result, span }) => {
       const entry: RetrievalPackEntry = {
         spanId: span.id,
         order: span.meta.order,
-        score,
+        score: result.score,
         headingPath: span.meta.headingPath,
+        hits: result.hits,
       }
       return this.expandHit(entry, expand, perHitNeighbors, paragraphsIndex)
     })

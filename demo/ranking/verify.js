@@ -123,7 +123,7 @@ test('Default ranking is document order', () => {
 
   // Verify actually in document order
   for (let i = 1; i < defaultResult.length; i++) {
-    if (defaultResult[i].meta.order < defaultResult[i - 1].meta.order) {
+    if (defaultResult[i].order < defaultResult[i - 1].order) {
       throw new Error('Default results should be in document order')
     }
   }
@@ -199,7 +199,9 @@ test('Multi-word query with ranking', () => {
 
   // Should work (AND logic still applies)
   // All results should contain both terms
-  for (const span of results) {
+  for (const result of results) {
+    const span = reader.getSpan(result.id)
+    if (!span) throw new Error(`Span ${result.id} not found`)
     const text = span.text.toLowerCase()
     if (!text.includes('section') || !text.includes('two')) {
       throw new Error('Multi-word query should require all terms')

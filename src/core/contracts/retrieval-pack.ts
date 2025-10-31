@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SearchHitsSchema } from './search-hit.js'
 
 /**
  * Options for the retrieve() method
@@ -15,13 +16,14 @@ export type RetrievalOptions = z.infer<typeof RetrievalOptionsSchema>
 
 /**
  * Entry span that triggered this retrieval pack
- * Contains the search hit metadata
+ * Contains the search hit metadata and optional hit annotations
  */
 export const RetrievalPackEntrySchema = z.object({
   spanId: z.string(),
   order: z.number().int().min(0),
   score: z.number(),
   headingPath: z.array(z.string()),
+  hits: SearchHitsSchema.optional(),
 })
 
 export type RetrievalPackEntry = z.infer<typeof RetrievalPackEntrySchema>

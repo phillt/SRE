@@ -1,4 +1,10 @@
 import { Span } from '../../core/contracts/span.js'
+import { SearchResult } from '../../core/contracts/search-hit.js'
+import {
+  parseQuery,
+  findPhraseMatches,
+  containsAllPhrases,
+} from './phrase-search.js'
 
 /**
  * Tokenize text into searchable tokens.
@@ -94,6 +100,98 @@ export class LexicalIndex {
 
     // Apply limit if specified
     return limit !== undefined ? results.slice(0, limit) : results
+  }
+
+  /**
+   * Search for spans matching query with hit annotations.
+   *
+   * Supports both tokens and quoted phrases.
+   * Uses AND logic for both tokens and phrases (all must match).
+   *
+   * Returns results with hit annotations including:
+   * - Token hits: which query tokens matched
+   * - Phrase hits: which phrases matched with character offsets
+   *
+   * @param query - Search query (supports "quoted phrases" and tokens)
+   * @param limit - Maximum number of results (optional)
+   * @returns Array of search results with hit annotations
+   */
+  searchWithHits(query: string, limit?: number): SearchResult[] {
+    // Parse query into phrases and tokens
+    const parsed = parseQuery(query)
+
+    // If no phrases and no tokens, return empty
+    if (parsed.phrases.length === 0 && parsed.tokens.length === 0) {
+      return []
+    }
+
+    // Get candidate spans using token-based search
+    let candidateIds: string[]
+
+    if (parsed.tokens.length > 0) {
+      // Use existing token logic to get candidates
+      candidateIds = this.search(parsed.tokens.join(' '))
+    } else {
+      // No tokens, but we have phrases - need to check all spans
+      // Use a cheap prefilter: get spans containing first word of first phrase
+      const firstPhrase = parsed.phrases[0]
+      const firstWord = tokenize(firstPhrase)[0]
+      if (firstWord) {
+        candidateIds = Array.from(this.index.get(firstWord) || new Set())
+      } else {
+        candidateIds = []
+      }
+    }
+
+    // Build span ID to Span map for quick lookup
+    const spansById = new Map<string, Span>()
+    for (const span of this.spans) {
+      spansById.set(span.id, span)
+    }
+
+    // Filter candidates by phrase requirements and collect hits
+    const results: SearchResult[] = []
+
+    for (const spanId of candidateIds) {
+      const span = spansById.get(spanId)
+      if (!span) continue
+
+      // Check if span contains all required phrases
+      if (parsed.phrases.length > 0) {
+        if (!containsAllPhrases(span.text, parsed.phrases)) {
+          continue // Skip spans that don't have all phrases
+        }
+      }
+
+      // Collect token hits (only tokens that actually exist in span)
+      const spanTokens = new Set(tokenize(span.text))
+      const tokenHits = parsed.tokens
+        .filter((term) => spanTokens.has(term))
+        .map((term) => ({ term }))
+
+      // Collect phrase hits with ranges
+      const phraseHits = parsed.phrases.map((phrase) => ({
+        phrase,
+        ranges: findPhraseMatches(span.text, phrase),
+      }))
+
+      results.push({
+        id: span.id,
+        order: span.meta.order,
+        score: 0, // Score will be set by ranker if used
+        hits: {
+          tokens: tokenHits,
+          phrases: phraseHits,
+        },
+      })
+
+      // Apply limit if specified
+      if (limit !== undefined && results.length >= limit) {
+        break
+      }
+    }
+
+    return results
   }
 
   /**
