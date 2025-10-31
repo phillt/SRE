@@ -461,12 +461,13 @@ export class Reader {
     const paragraphsIndex = this.buildParagraphToSectionIndex()
 
     // Step 3: Expand each hit
-    const expandedContexts = searchResults.map(({ span, score }) => {
+    const expandedContexts = searchResults.map(({ result, span }) => {
       const entry: RetrievalPackEntry = {
         spanId: span.id,
         order: span.meta.order,
-        score,
+        score: result.score,
         headingPath: span.meta.headingPath,
+        hits: result.hits,
       }
       return this.expandHit(entry, expand, perHitNeighbors, paragraphsIndex)
     })
