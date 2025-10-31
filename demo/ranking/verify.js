@@ -123,7 +123,7 @@ test('Default ranking is document order', () => {
 
   // Verify actually in document order
   for (let i = 1; i < defaultResult.length; i++) {
-    if (defaultResult[i].meta.order < defaultResult[i - 1].meta.order) {
+    if (defaultResult[i].order < defaultResult[i - 1].order) {
       throw new Error('Default results should be in document order')
     }
   }

@@ -178,7 +178,7 @@ test('Results in consistent document order', () => {
 
   // Check sorted by order
   for (let i = 1; i < results1.length; i++) {
-    if (results1[i].meta.order < results1[i - 1].meta.order) {
+    if (results1[i].order < results1[i - 1].order) {
       throw new Error('Results should be sorted by document order')
     }
   }
