@@ -163,8 +163,11 @@ export class LexicalIndex {
         }
       }
 
-      // Collect token hits (which tokens from query matched)
-      const tokenHits = parsed.tokens.map((term) => ({ term }))
+      // Collect token hits (only tokens that actually exist in span)
+      const spanTokens = new Set(tokenize(span.text))
+      const tokenHits = parsed.tokens
+        .filter((term) => spanTokens.has(term))
+        .map((term) => ({ term }))
 
       // Collect phrase hits with ranges
       const phraseHits = parsed.phrases.map((phrase) => ({

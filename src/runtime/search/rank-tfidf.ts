@@ -64,6 +64,15 @@ class LRUCache<K, V> {
 }
 
 /**
+ * Cached TF data including both term frequencies and document length.
+ * Caching both avoids re-tokenizing the same span during ranking.
+ */
+interface TFData {
+  tfMap: Map<string, number>
+  docLength: number
+}
+
+/**
  * TF-IDF relevance ranker for search results.
  *
  * Computes relevance scores using:
@@ -74,11 +83,12 @@ class LRUCache<K, V> {
  * Hybrid caching strategy:
  * - DF (Document Frequency): Cached globally in inverted index
  * - TF (Term Frequency): Computed per query, optionally cached with LRU
+ * - Document length: Cached alongside TF to avoid re-tokenizing
  */
 export class TFIDFRanker {
   private readonly index: LexicalIndex
   private readonly spansById: Map<string, Span>
-  private tfCache?: LRUCache<string, Map<string, number>>
+  private tfCache?: LRUCache<string, TFData>
 
   /**
    * Create TF-IDF ranker.
@@ -131,27 +141,26 @@ export class TFIDFRanker {
       const span = this.spansById.get(spanId)
       if (!span) continue
 
-      // Check cache for TF
-      let tfMap = this.tfCache?.get(spanId)
+      // Check cache for TF data
+      let tfData = this.tfCache?.get(spanId)
 
-      if (!tfMap) {
-        // Compute TF for this span
-        tfMap = this.computeTF(span)
+      if (!tfData) {
+        // Compute TF and document length for this span
+        tfData = this.computeTF(span)
         // Cache if enabled
-        this.tfCache?.set(spanId, tfMap)
+        this.tfCache?.set(spanId, tfData)
       }
 
       // Compute TF-IDF score
       let score = 0
       for (const token of queryTokens) {
-        const tf = tfMap.get(token) ?? 0
+        const tf = tfData.tfMap.get(token) ?? 0
         const idf = idfMap.get(token) ?? 0
         score += tf * idf
       }
 
       // Length normalization: divide by sqrt(doc_length)
-      const docLength = tokenize(span.text).length
-      score = score / Math.sqrt(docLength)
+      score = score / Math.sqrt(tfData.docLength)
 
       scored.push({ id: spanId, score })
     }
@@ -192,27 +201,26 @@ export class TFIDFRanker {
       const span = this.spansById.get(result.id)
       if (!span) continue
 
-      // Check cache for TF
-      let tfMap = this.tfCache?.get(result.id)
+      // Check cache for TF data
+      let tfData = this.tfCache?.get(result.id)
 
-      if (!tfMap) {
-        // Compute TF for this span
-        tfMap = this.computeTF(span)
+      if (!tfData) {
+        // Compute TF and document length for this span
+        tfData = this.computeTF(span)
         // Cache if enabled
-        this.tfCache?.set(result.id, tfMap)
+        this.tfCache?.set(result.id, tfData)
       }
 
       // Compute TF-IDF score
       let score = 0
       for (const token of queryTokens) {
-        const tf = tfMap.get(token) ?? 0
+        const tf = tfData.tfMap.get(token) ?? 0
         const idf = idfMap.get(token) ?? 0
         score += tf * idf
       }
 
       // Length normalization: divide by sqrt(doc_length)
-      const docLength = tokenize(span.text).length
-      score = score / Math.sqrt(docLength)
+      score = score / Math.sqrt(tfData.docLength)
 
       // Add phrase boost (capped at 0.3)
       const phraseCount = result.hits.phrases.length
@@ -229,15 +237,17 @@ export class TFIDFRanker {
   }
 
   /**
-   * Compute log-normalized TF for a span.
+   * Compute log-normalized TF and document length for a span.
    *
    * TF = 1 + log(count) for each token.
    * Dampens effect of high-frequency terms.
    *
+   * Computes document length during tokenization to avoid re-tokenizing.
+   *
    * @param span - Span to compute TF for
-   * @returns Map of token → log-normalized TF
+   * @returns TF data with term frequencies and document length
    */
-  private computeTF(span: Span): Map<string, number> {
+  private computeTF(span: Span): TFData {
     const tokens = tokenize(span.text)
     const termCounts = new Map<string, number>()
 
@@ -252,6 +262,9 @@ export class TFIDFRanker {
       tfMap.set(token, 1 + Math.log(count))
     }
 
-    return tfMap
+    return {
+      tfMap,
+      docLength: tokens.length,
+    }
   }
 }

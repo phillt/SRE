@@ -15,10 +15,14 @@ export type TokenHit = z.infer<typeof TokenHitSchema>
 export const PhraseHitSchema = z.object({
   phrase: z.string(),
   ranges: z.array(
-    z.object({
-      start: z.number().int().min(0),
-      end: z.number().int().min(0),
-    })
+    z
+      .object({
+        start: z.number().int().min(0),
+        end: z.number().int().min(0),
+      })
+      .refine((range) => range.end > range.start, {
+        message: 'end must be greater than start',
+      })
   ),
 })
 

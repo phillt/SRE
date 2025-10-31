@@ -31,12 +31,14 @@ export interface PhraseMatchRange {
  * - '"policy names" "error messages"' → phrases: ["policy names", "error messages"], tokens: []
  * - 'simple query' → phrases: [], tokens: ["simple", "query"]
  *
+ * Note: Escaped quotes (e.g., `\"`) inside phrases are not currently supported.
+ * If needed, this can be added in a future version.
+ *
  * @param query - Search query string
  * @returns Parsed query with phrases and tokens
  */
 export function parseQuery(query: string): ParsedQuery {
   const phrases: string[] = []
-  let remaining = query
 
   // Extract quoted phrases
   const phraseRegex = /"([^"]+)"/g
@@ -47,7 +49,7 @@ export function parseQuery(query: string): ParsedQuery {
   }
 
   // Remove quoted phrases from query to get remaining tokens
-  remaining = query.replace(phraseRegex, ' ')
+  const remaining = query.replace(phraseRegex, ' ')
 
   // Tokenize remaining text (same logic as lexical-index.ts tokenize())
   const tokens = remaining
