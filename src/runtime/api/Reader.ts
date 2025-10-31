@@ -16,7 +16,7 @@ import {
   createPack,
   ExpandedContext,
 } from '../retrieval/expand.js'
-import { dedupeAndMerge, MergedContext } from '../retrieval/merge-dedupe.js'
+import { dedupeAndMerge } from '../retrieval/merge-dedupe.js'
 import { applyBudget } from '../retrieval/budget.js'
 
 /**
