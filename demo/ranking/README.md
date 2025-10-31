@@ -362,7 +362,7 @@ const results = reader.search(query, { rank: 'tfidf' })
 - ✅ No hyperparameters
 - ❌ Less sophisticated (BM25 has term saturation)
 
-### Hybrid vs Pure Semantic Search
+### Hybrid vs External Semantic Search Models
 - ✅ Combines precision (lexical) + recall (semantic)
 - ✅ Configurable weights for different use cases
 - ✅ Fast, deterministic (no external API)

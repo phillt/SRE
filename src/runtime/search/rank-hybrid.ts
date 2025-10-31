@@ -1,4 +1,3 @@
-import { Span } from '../../core/contracts/span.js'
 import { SearchResult } from '../../core/contracts/search-hit.js'
 import { TFIDFRanker } from './rank-tfidf.js'
 import { SemanticRanker } from './rank-semantic.js'
@@ -85,11 +84,15 @@ export class HybridRanker {
    * Applies same phrase boost and fuzzy penalty as TF-IDF ranker,
    * then fuses with semantic similarity scores.
    *
+   * Note: This method does NOT sort the results. The caller (Reader.search)
+   * is responsible for sorting by score descending with document order tie-breaking.
+   * This matches the pattern used by TFIDFRanker for consistency.
+   *
    * @param results - Search results with hit annotations
    * @param queryTokens - Pre-tokenized query terms
    * @param queryEmbedding - Query embedding vector (128-d)
    * @param options - Hybrid ranking options
-   * @returns Array of search results with updated hybrid scores
+   * @returns Array of search results with updated hybrid scores (unsorted)
    */
   rankWithHits(
     results: SearchResult[],
@@ -104,11 +107,16 @@ export class HybridRanker {
     } = options
 
     // Validate weights
+    // Weights can sum to less than 1.0 (remaining space is unscored)
+    // or exactly 1.0 (full score range utilized)
     if (weightLexical < 0 || weightSemantic < 0) {
       throw new Error('Weights must be non-negative')
     }
-    if (weightLexical + weightSemantic > 1.0) {
-      throw new Error('Weight sum cannot exceed 1.0')
+    const weightSum = weightLexical + weightSemantic
+    if (weightSum > 1.0) {
+      throw new Error(
+        `Weight sum cannot exceed 1.0 (got ${weightSum.toFixed(3)})`
+      )
     }
 
     // If no results, return empty

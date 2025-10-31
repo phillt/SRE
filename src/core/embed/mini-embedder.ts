@@ -17,6 +17,12 @@
 const EMBEDDING_DIM = 128
 
 /**
+ * Pre-allocated zero vector for empty text
+ * Returned as a slice to prevent mutation of the constant
+ */
+const ZERO_VECTOR = new Array(EMBEDDING_DIM).fill(0)
+
+/**
  * Simple deterministic hash function
  * Maps string + dimension index to a value in [-1, 1]
  *
@@ -107,7 +113,7 @@ export function embedText(text: string): number[] {
   const tokens = tokenize(text)
 
   if (tokens.length === 0) {
-    return new Array(EMBEDDING_DIM).fill(0)
+    return ZERO_VECTOR.slice()
   }
 
   // Initialize accumulator
