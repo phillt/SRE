@@ -1,4 +1,5 @@
 import { Span } from '../../core/contracts/span.js'
+import { SearchResult } from '../../core/contracts/search-hit.js'
 import { LexicalIndex, tokenize } from './lexical-index.js'
 
 /**
@@ -153,6 +154,75 @@ export class TFIDFRanker {
       score = score / Math.sqrt(docLength)
 
       scored.push({ id: spanId, score })
+    }
+
+    return scored
+  }
+
+  /**
+   * Rank search results with phrase boosting.
+   *
+   * Computes TF-IDF scores and adds a small boost for phrase matches.
+   * Phrase boost: +0.1 per distinct phrase (capped at +0.3).
+   *
+   * @param results - Search results with hit annotations
+   * @param queryTokens - Pre-tokenized query terms
+   * @param phraseBoost - Boost per phrase (default: 0.1)
+   * @returns Array of search results with updated scores
+   */
+  rankWithHits(
+    results: SearchResult[],
+    queryTokens: string[],
+    phraseBoost: number = 0.1
+  ): SearchResult[] {
+    const totalDocs = this.index.getTotalDocuments()
+
+    // Compute IDF for each query token (global, from postings)
+    const idfMap = new Map<string, number>()
+    for (const token of queryTokens) {
+      const df = this.index.getDocumentFrequency(token)
+      const idf = Math.log(totalDocs / (1 + df))
+      idfMap.set(token, idf)
+    }
+
+    // Score each result
+    const scored: SearchResult[] = []
+
+    for (const result of results) {
+      const span = this.spansById.get(result.id)
+      if (!span) continue
+
+      // Check cache for TF
+      let tfMap = this.tfCache?.get(result.id)
+
+      if (!tfMap) {
+        // Compute TF for this span
+        tfMap = this.computeTF(span)
+        // Cache if enabled
+        this.tfCache?.set(result.id, tfMap)
+      }
+
+      // Compute TF-IDF score
+      let score = 0
+      for (const token of queryTokens) {
+        const tf = tfMap.get(token) ?? 0
+        const idf = idfMap.get(token) ?? 0
+        score += tf * idf
+      }
+
+      // Length normalization: divide by sqrt(doc_length)
+      const docLength = tokenize(span.text).length
+      score = score / Math.sqrt(docLength)
+
+      // Add phrase boost (capped at 0.3)
+      const phraseCount = result.hits.phrases.length
+      const boost = Math.min(0.3, phraseCount * phraseBoost)
+      score += boost
+
+      scored.push({
+        ...result,
+        score,
+      })
     }
 
     return scored
