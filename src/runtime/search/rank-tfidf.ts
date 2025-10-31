@@ -233,8 +233,12 @@ export class TFIDFRanker {
 
       // Apply fuzzy penalty if all token hits are fuzzy-only
       // (no exact matches, only fuzzy matches)
-      const hasFuzzyTokens = result.hits.tokens.some((hit) => hit.fuzzy)
-      const hasExactTokens = result.hits.tokens.some((hit) => !hit.fuzzy)
+      const hasFuzzyTokens = result.hits.tokens.some(
+        (hit) => hit.fuzzy === true
+      )
+      const hasExactTokens = result.hits.tokens.some(
+        (hit) => hit.fuzzy !== true
+      )
       const isFuzzyOnly = hasFuzzyTokens && !hasExactTokens
 
       if (isFuzzyOnly) {

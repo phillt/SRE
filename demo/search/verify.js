@@ -478,12 +478,12 @@ test('Fuzzy marks token hits with fuzzy flag', () => {
 
 test('Fuzzy respects minTokenLen (short tokens skip fuzzy)', () => {
   // Short token should not use fuzzy even if enabled
-  // "ab" is too short (default minTokenLen = 4)
-  const results = reader.search('abc', {
+  // "abc" is too short (default minTokenLen = 4)
+  reader.search('abc', {
     fuzzy: { enabled: true, minTokenLen: 4 }
   })
   // Should not match if "abc" doesn't exist and is too short for fuzzy
-  // This test verifies the minTokenLen filter works
+  // This test verifies the minTokenLen filter works (no error = pass)
 })
 
 test('Fuzzy respects dfThreshold (common tokens skip fuzzy)', () => {
@@ -579,11 +579,11 @@ test('Fuzzy matching is deterministic', () => {
 
 test('Fuzzy respects maxCandidatesPerToken cap', () => {
   // Use a very low cap to ensure it's enforced
-  const results = reader.search('secton', {
+  reader.search('secton', {
     fuzzy: { enabled: true, maxCandidatesPerToken: 1 }
   })
   // Should still return results but with limited fuzzy expansion
-  // Hard to test directly, but verify search completes successfully
+  // Hard to test directly, but verify search completes successfully (no error = pass)
 })
 
 // Summary

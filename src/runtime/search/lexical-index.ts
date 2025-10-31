@@ -133,22 +133,22 @@ export class LexicalIndex {
    *
    * @param token - Query token
    * @param fuzzyOptions - Fuzzy matching options (optional)
-   * @returns Object with span IDs and whether fuzzy was used
+   * @returns Object with span IDs, fuzzy candidates used, and whether fuzzy added spans
    */
   private getPostingsWithFuzzy(
     token: string,
     fuzzyOptions?: FuzzyOptions
-  ): { spanIds: Set<string>; usedFuzzy: boolean } {
+  ): { spanIds: Set<string>; fuzzyCandidates: string[] } {
     // Start with exact match postings
     const exactPostings = this.index.get(token) || new Set<string>()
     let spanIds = new Set(exactPostings)
-    let usedFuzzy = false
+    let fuzzyCandidates: string[] = []
 
     // Apply fuzzy expansion if enabled and eligible
     if (fuzzyOptions?.enabled && this.isFuzzyEligible(token, fuzzyOptions)) {
       const { maxCandidatesPerToken = 50 } = fuzzyOptions
       const vocabulary = this.getVocabulary()
-      const fuzzyCandidates = findFuzzyCandidates(
+      fuzzyCandidates = findFuzzyCandidates(
         token,
         vocabulary,
         maxCandidatesPerToken
@@ -163,14 +163,9 @@ export class LexicalIndex {
           }
         }
       }
-
-      // Track if fuzzy expansion actually added any spans
-      if (fuzzyCandidates.length > 0) {
-        usedFuzzy = true
-      }
     }
 
-    return { spanIds, usedFuzzy }
+    return { spanIds, fuzzyCandidates }
   }
 
   /**
@@ -247,17 +242,17 @@ export class LexicalIndex {
 
     // Get candidate spans using token-based search with optional fuzzy expansion
     let candidateIds: string[]
-    // Track which tokens used fuzzy matching (for marking hits later)
-    const tokenFuzzyMap = new Map<string, boolean>()
+    // Track fuzzy candidates for each token (for marking hits later)
+    const tokenFuzzyCandidates = new Map<string, string[]>()
 
     if (parsed.tokens.length > 0) {
       // Get postings for each token (with fuzzy expansion if enabled)
       const tokenPostings = parsed.tokens.map((token) => {
-        const { spanIds, usedFuzzy } = this.getPostingsWithFuzzy(
+        const { spanIds, fuzzyCandidates } = this.getPostingsWithFuzzy(
           token,
           fuzzyOptions
         )
-        tokenFuzzyMap.set(token, usedFuzzy)
+        tokenFuzzyCandidates.set(token, fuzzyCandidates)
         return spanIds
       })
 
@@ -302,14 +297,33 @@ export class LexicalIndex {
         }
       }
 
-      // Collect token hits (only tokens that actually exist in span)
+      // Collect token hits (only tokens that actually match in span)
       const spanTokens = new Set(tokenize(span.text))
       const tokenHits = parsed.tokens
-        .filter((term) => spanTokens.has(term) || tokenFuzzyMap.get(term))
+        .filter((term) => {
+          // Include if exact match
+          if (spanTokens.has(term)) return true
+          // Include if any fuzzy candidate matches
+          const fuzzyCandidates = tokenFuzzyCandidates.get(term)
+          if (fuzzyCandidates && fuzzyCandidates.length > 0) {
+            return fuzzyCandidates.some((candidate) =>
+              spanTokens.has(candidate)
+            )
+          }
+          return false
+        })
         .map((term) => {
-          // Mark as fuzzy if token used fuzzy matching AND token doesn't exist exactly in span
+          // Mark as fuzzy if token doesn't exist exactly but fuzzy candidate does
           const exactMatch = spanTokens.has(term)
-          const usedFuzzy = tokenFuzzyMap.get(term) && !exactMatch
+          let usedFuzzy = false
+          if (!exactMatch) {
+            const fuzzyCandidates = tokenFuzzyCandidates.get(term)
+            if (fuzzyCandidates && fuzzyCandidates.length > 0) {
+              usedFuzzy = fuzzyCandidates.some((candidate) =>
+                spanTokens.has(candidate)
+              )
+            }
+          }
           return usedFuzzy ? { term, fuzzy: true } : { term }
         })
 
