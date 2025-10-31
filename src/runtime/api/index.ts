@@ -18,3 +18,12 @@ export { Reader } from './Reader.js'
 export type { NeighborsOptions, SearchOptions } from './Reader.js'
 export { loadArtifacts } from '../loader/load-artifacts.js'
 export type { LoadedArtifacts } from '../loader/load-artifacts.js'
+
+// Re-export retrieval types
+export type {
+  RetrievalOptions,
+  RetrievalPack,
+  RetrievalPackEntry,
+  RetrievalPackScope,
+  RetrievalPackMeta,
+} from '../../core/contracts/retrieval-pack.js'

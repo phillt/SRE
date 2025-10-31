@@ -5,6 +5,19 @@ import { BuildReport } from '../../core/contracts/report.js'
 import { LoadedArtifacts } from '../loader/load-artifacts.js'
 import { LexicalIndex, tokenize } from '../search/lexical-index.js'
 import { TFIDFRanker } from '../search/rank-tfidf.js'
+import {
+  RetrievalOptions,
+  RetrievalPack,
+  RetrievalPackEntry,
+} from '../../core/contracts/retrieval-pack.js'
+import {
+  expandToNeighbors,
+  expandToSection,
+  createPack,
+  ExpandedContext,
+} from '../retrieval/expand.js'
+import { dedupeAndMerge } from '../retrieval/merge-dedupe.js'
+import { applyBudget } from '../retrieval/budget.js'
 
 /**
  * Options for the neighbors() method
@@ -20,6 +33,14 @@ export interface NeighborsOptions {
 export interface SearchOptions {
   limit?: number
   rank?: 'none' | 'tfidf'
+}
+
+/**
+ * Internal search result with score information
+ */
+interface ScoredSpan {
+  span: Span
+  score: number
 }
 
 /**
@@ -320,5 +341,156 @@ export class Reader {
 
     // Enable cache on ranker
     this.tfidfRanker.enableCache(cacheSize)
+  }
+
+  /**
+   * Search and return spans with relevance scores.
+   * Internal method used by retrieve().
+   *
+   * @param query - Search query
+   * @param options - Search options
+   * @returns Array of scored spans
+   */
+  private searchWithScores(
+    query: string,
+    options?: SearchOptions
+  ): ScoredSpan[] {
+    // Reuse existing search logic but capture scores
+    const spans = this.search(query, options)
+
+    if (options?.rank === 'tfidf' && this.tfidfRanker) {
+      // Re-compute scores for these spans
+      const queryTokens = tokenize(query)
+      const spanIds = spans.map((s) => s.id)
+      const scored = this.tfidfRanker.rank(spanIds, queryTokens)
+
+      // Build score map
+      const scoreMap = new Map(scored.map((s) => [s.id, s.score]))
+
+      return spans.map((span) => ({
+        span,
+        score: scoreMap.get(span.id) || 0,
+      }))
+    }
+
+    // No ranking - score = 0
+    return spans.map((span) => ({ span, score: 0 }))
+  }
+
+  /**
+   * Build index mapping paragraph IDs to section IDs.
+   * Used for section-based expansion.
+   *
+   * @returns Map from span ID to section ID
+   */
+  private buildParagraphToSectionIndex(): Map<string, string> {
+    const index = new Map<string, string>()
+    if (this.nodeMap) {
+      for (const [spanId, paragraph] of Object.entries(
+        this.nodeMap.paragraphs
+      )) {
+        index.set(spanId, paragraph.sectionId)
+      }
+    }
+    return index
+  }
+
+  /**
+   * Expand a single search hit to a context window.
+   *
+   * @param entry - Search hit entry
+   * @param expandMode - Expansion mode ('neighbors' or 'section')
+   * @param perHitNeighbors - Number of neighbors for neighbor expansion
+   * @param paragraphsIndex - Index for section lookup
+   * @returns Expanded context
+   */
+  private expandHit(
+    entry: RetrievalPackEntry,
+    expandMode: 'neighbors' | 'section',
+    perHitNeighbors: number,
+    paragraphsIndex: Map<string, string>
+  ): ExpandedContext {
+    const maxOrder = this.orderedSpans.length - 1
+
+    // Try section expansion if requested
+    if (expandMode === 'section' && this.nodeMap) {
+      const sectionContext = expandToSection(
+        entry,
+        this.nodeMap,
+        paragraphsIndex
+      )
+      if (sectionContext) {
+        return sectionContext
+      }
+      // Fallback to neighbors if section not found
+    }
+
+    // Neighbors expansion (or fallback)
+    return expandToNeighbors(entry, perHitNeighbors, this.orderToId, maxOrder)
+  }
+
+  /**
+   * Retrieve context packs for a query.
+   *
+   * Transforms ranked search hits into LLM-ready context blocks by:
+   * 1. Running search to get candidate hits
+   * 2. Expanding each hit to neighbors or full section
+   * 3. Merging and deduping overlapping contexts
+   * 4. Ranking packs by relevance
+   * 5. Applying budget constraints
+   *
+   * @param query - Search query
+   * @param options - Retrieval options
+   * @returns Array of retrieval packs
+   */
+  retrieve(query: string, options: RetrievalOptions = {}): RetrievalPack[] {
+    const {
+      limit = 5,
+      perHitNeighbors = 1,
+      expand = 'neighbors',
+      maxTokens,
+      rank = 'tfidf',
+    } = options
+
+    // Step 1: Search with expanded candidate limit
+    const searchResults = this.searchWithScores(query, {
+      rank,
+      limit: limit * 4,
+    })
+
+    if (searchResults.length === 0) {
+      return []
+    }
+
+    // Step 2: Build indexes for expansion
+    const paragraphsIndex = this.buildParagraphToSectionIndex()
+
+    // Step 3: Expand each hit
+    const expandedContexts = searchResults.map(({ span, score }) => {
+      const entry: RetrievalPackEntry = {
+        spanId: span.id,
+        order: span.meta.order,
+        score,
+        headingPath: span.meta.headingPath,
+      }
+      return this.expandHit(entry, expand, perHitNeighbors, paragraphsIndex)
+    })
+
+    // Step 4: Merge and dedupe
+    const mergedContexts = dedupeAndMerge(expandedContexts)
+
+    // Step 5: Create packs
+    const packs = mergedContexts.map((ctx) => createPack(ctx, this.spansById))
+
+    // Step 6: Sort by score desc, then order asc
+    packs.sort((a, b) => {
+      if (b.entry.score !== a.entry.score) {
+        return b.entry.score - a.entry.score
+      }
+      return a.entry.order - b.entry.order
+    })
+
+    // Step 7: Apply budget
+    return applyBudget(packs, limit, maxTokens)
   }
 }
